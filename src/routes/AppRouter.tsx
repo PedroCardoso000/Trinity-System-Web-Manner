@@ -4,6 +4,8 @@ import DashboardPage from '../pages/dashboard/DashboardPage'
 import StudentsPage from '../pages/students/StudentsPage'
 import DashboardLayout from '../pages/layouts/DashboardLayout'
 import BranchesPage from '../pages/branchs/BranchesPage'
+import GraduationsPage from '../pages/graduationsPage/GraduationsPage'
+import CheckInPage from '../pages/checkInPage/CheckInPage'
 // import { useAuth } from '../hooks/useAuth'
 // import type { UserRole } from '../types/auth'
 // import type { JSX } from 'react'
@@ -37,6 +39,9 @@ export default function AppRouter() {
           <Route path="/" element={<DashboardPage />} />
           <Route path="/students" element={<StudentsPage />} />
           <Route path="/branches" element={<BranchesPage />} />
+          <Route path="/graduations" element={<GraduationsPage />} />
+          <Route path="/checkin" element={<CheckInPage />} />
+          
         </Route>
       </Routes>
     </BrowserRouter>
