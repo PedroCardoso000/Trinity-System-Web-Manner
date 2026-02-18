@@ -118,7 +118,7 @@ export default function BranchesPage() {
                 <span
                   className={`inline-block mt-3 px-3 py-1 rounded-full text-xs ${
                     branch.active
-                      ? 'bg-green-700/20 text-green-400'
+                      ? 'bg-red-700/20 text-red-400'
                       : 'bg-neutral-700/20 text-neutral-400'
                   }`}
                 >

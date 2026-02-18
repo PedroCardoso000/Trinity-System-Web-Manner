@@ -146,7 +146,7 @@ export default function StudentsPage() {
               <span
                 className={`rounded-full px-3 py-1 text-xs font-medium border ${
                   student.ativo
-                    ? 'border-green-600 text-green-400'
+                    ? 'border-red-600 text-red-400'
                     : 'border-neutral-600 text-neutral-400'
                 }`}
               >

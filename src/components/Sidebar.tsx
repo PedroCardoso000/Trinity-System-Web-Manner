@@ -1,13 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import {
-  LayoutDashboard,
-  Users,
-  Building2,
-  CheckSquare,
-  Award,
-  BarChart3,
-  LogOut,
-} from 'lucide-react'
+import { LayoutDashboard, Users, Building2, CheckSquare, Award, LogOut } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 
 export default function Sidebar() {
@@ -16,10 +8,10 @@ export default function Sidebar() {
   return (
     <aside className="flex h-screen w-72 flex-col bg-gradient-to-b from-black to-neutral-950 border-r border-red-900/60">
       <div className="px-6 py-6 border-b border-red-900/60 flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-600 text-white font-bold">
-          T
+        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-black ring-2 ring-red-600 overflow-hidden">
+          <img src="/trinity.png" alt="logo" className="h-10 w-10 object-cover" />
         </div>
-        <div>
+        <div className="leading-tight">
           <p className="text-sm font-semibold text-white">Trinity</p>
           <p className="text-xs text-neutral-300">Jiu-Jitsu Academy</p>
         </div>
@@ -31,7 +23,6 @@ export default function Sidebar() {
         <Item to="/students" icon={Users} label="Alunos" />
         <Item to="/checkin" icon={CheckSquare} label="Check-in" />
         <Item to="/graduations" icon={Award} label="Graduações" />
-        <Item to="/reports" icon={BarChart3} label="Relatórios" />
       </nav>
 
       <div className="px-4 py-4 border-t border-red-900/60">

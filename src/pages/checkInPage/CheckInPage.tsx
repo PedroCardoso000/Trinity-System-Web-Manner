@@ -250,15 +250,15 @@ export default function CheckInPage() {
                       <td className="p-4">{aluno.faixa}</td>
                       <td className="p-4">
                         {att.status === 'PRESENTE' ? (
-                          <span className="text-green-400">Presente</span>
+                          <span className="text-red-400">Presente</span>
                         ) : (
-                          <span className="text-red-400">Ausente</span>
+                          <span className="text-neutral-400">Ausente</span>
                         )}
                       </td>
                       <td className="p-4 flex gap-3">
                         <button
                           onClick={() => registrarCheckIn(aluno.id)}
-                          className="bg-green-700 px-3 py-1 rounded-lg flex items-center gap-1"
+                          className="bg-red-700 px-3 py-1 rounded-lg flex items-center gap-1 hover:bg-red-600"
                         >
                           <Check className="h-4 w-4" />
                           Check-in
@@ -266,7 +266,7 @@ export default function CheckInPage() {
 
                         <button
                           onClick={() => ausentarCheckIn(aluno.id)}
-                          className="bg-red-700 px-3 py-1 rounded-lg flex items-center gap-1"
+                          className="border border-neutral-700 px-3 py-1 rounded-lg flex items-center gap-1 hover:bg-neutral-800"
                         >
                           <X className="h-4 w-4" />
                           Ausentar
