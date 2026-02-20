@@ -6,6 +6,8 @@ import DashboardLayout from '../pages/layouts/DashboardLayout'
 import BranchesPage from '../pages/branchs/BranchesPage'
 import GraduationsPage from '../pages/graduationsPage/GraduationsPage'
 import CheckInPage from '../pages/checkInPage/CheckInPage'
+import ForgotPasswordPage from '../pages/auth/ForgotPasswordPage'
+import RegisterPage from '../pages/auth/RegisterPage'
 // import { useAuth } from '../hooks/useAuth'
 // import type { UserRole } from '../types/auth'
 // import type { JSX } from 'react'
@@ -31,17 +33,18 @@ import CheckInPage from '../pages/checkInPage/CheckInPage'
 
 export default function AppRouter() {
   return (
-     <BrowserRouter>
+    <BrowserRouter>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
-
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/register" element={<RegisterPage />} />
         <Route element={<DashboardLayout />}>
           <Route path="/" element={<DashboardPage />} />
           <Route path="/students" element={<StudentsPage />} />
           <Route path="/branches" element={<BranchesPage />} />
           <Route path="/graduations" element={<GraduationsPage />} />
           <Route path="/checkin" element={<CheckInPage />} />
-          
+
         </Route>
       </Routes>
     </BrowserRouter>

@@ -123,6 +123,24 @@ export default function LoginPage() {
           >
             {submitting ? 'Entrando...' : 'Entrar'}
           </button>
+          {/* Links adicionais */}
+          <div className="flex justify-between items-center pt-4 text-sm">
+            <button
+              type="button"
+              onClick={() => navigate('/forgot-password')}
+              className="text-neutral-400 hover:text-white transition-colors"
+            >
+              Esqueci minha senha
+            </button>
+
+            <button
+              type="button"
+              onClick={() => navigate('/register')}
+              className="text-red-500 hover:text-red-400 font-medium transition-colors"
+            >
+              Cadastrar
+            </button>
+          </div>
         </form>
       </div>
     </div>

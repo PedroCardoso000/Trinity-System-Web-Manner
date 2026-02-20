@@ -8,8 +8,8 @@ export default function Sidebar() {
   return (
     <aside className="flex h-screen w-72 flex-col bg-gradient-to-b from-black to-neutral-950 border-r border-red-900/60">
       <div className="px-6 py-6 border-b border-red-900/60 flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-black ring-2 ring-red-600 overflow-hidden">
-          <img src="/trinity.png" alt="logo" className="h-10 w-10 object-cover" />
+        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-black ring-2 overflow-hidden">
+          <img src="/logojj.png" alt="logo" className="h-10 w-10 object-cover" />
         </div>
         <div className="leading-tight">
           <p className="text-sm font-semibold text-white">Trinity</p>
