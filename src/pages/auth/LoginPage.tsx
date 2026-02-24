@@ -1,28 +1,44 @@
 import { type FormEvent, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import apiAuth from '../../api/apiAuth';
 // import { useAuth } from '../../hooks/useAuth'
 
 export default function LoginPage() {
   // const { login } = useAuth()
-  const navigate = useNavigate()
+  const navigate = useNavigate();
 
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(event: FormEvent) {
-    event.preventDefault()
-    setError(null)
-    setSubmitting(true)
+    event.preventDefault();
+    setError(null);
+    setSubmitting(true);
 
     try {
-      // await login(email, password)
-      navigate('/', { replace: true })
-    } catch {
-      setError('Não foi possível entrar. Verifique suas credenciais.')
+      const response = await apiAuth.post("/auth/login", {
+        email,
+        password,
+      });
+
+      const { token } = response.data;
+
+      if (token) {
+        localStorage.setItem("token", token);
+      }
+
+      navigate("/", { replace: true });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (err: any) {
+      if (err.response?.status === 401) {
+        setError("Credenciais inválidas.");
+      } else {
+        setError("Erro ao conectar com o servidor.");
+      }
     } finally {
-      setSubmitting(false)
+      setSubmitting(false);
     }
   }
 
