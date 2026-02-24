@@ -1,4 +1,4 @@
-import { type FormEvent, useState } from 'react'
+import { type FormEvent, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import apiAuth from '../../api/apiAuth';
 // import { useAuth } from '../../hooks/useAuth'
@@ -30,7 +30,7 @@ export default function LoginPage() {
       }
 
       navigate("/", { replace: true });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       if (err.response?.status === 401) {
         setError("Credenciais inválidas.");
@@ -41,6 +41,15 @@ export default function LoginPage() {
       setSubmitting(false);
     }
   }
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+
+    if (token) {
+      navigate("/", { replace: true });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="min-h-screen bg-black text-white flex items-center justify-center">

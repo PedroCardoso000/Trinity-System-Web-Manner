@@ -8,6 +8,7 @@ import GraduationsPage from '../pages/graduationsPage/GraduationsPage'
 import CheckInPage from '../pages/checkInPage/CheckInPage'
 import ForgotPasswordPage from '../pages/auth/ForgotPasswordPage'
 import RegisterPage from '../pages/auth/RegisterPage'
+import PrivateRoute from "./PrivateRoute";
 // import { useAuth } from '../hooks/useAuth'
 // import type { UserRole } from '../types/auth'
 // import type { JSX } from 'react'
@@ -35,18 +36,22 @@ export default function AppRouter() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* Rotas públicas */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/register" element={<RegisterPage />} />
-        <Route element={<DashboardLayout />}>
-          <Route path="/" element={<DashboardPage />} />
-          <Route path="/students" element={<StudentsPage />} />
-          <Route path="/branches" element={<BranchesPage />} />
-          <Route path="/graduations" element={<GraduationsPage />} />
-          <Route path="/checkin" element={<CheckInPage />} />
 
+        {/* Rotas protegidas */}
+        <Route element={<PrivateRoute />}>
+          <Route element={<DashboardLayout />}>
+            <Route path="/" element={<DashboardPage />} />
+            <Route path="/students" element={<StudentsPage />} />
+            <Route path="/branches" element={<BranchesPage />} />
+            <Route path="/graduations" element={<GraduationsPage />} />
+            <Route path="/checkin" element={<CheckInPage />} />
+          </Route>
         </Route>
       </Routes>
     </BrowserRouter>
-  )
+  );
 }
