@@ -1,15 +1,21 @@
-import { NavLink } from 'react-router-dom'
+import { NavLink, useNavigate } from 'react-router-dom'
 import { LayoutDashboard, Users, Building2, CheckSquare, Award, LogOut } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 
 export default function Sidebar() {
   const { user, logout } = useAuth()
+  const navigate = useNavigate()
+
+  const handleLogout = () => {
+    logout()
+    navigate('/login', { replace: true })
+  }
 
   return (
     <aside className="flex h-screen w-72 flex-col bg-gradient-to-b from-black to-neutral-950 border-r border-red-900/60">
       <div className="px-6 py-6 border-b border-red-900/60 flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-black ring-2 ring-red-600 overflow-hidden">
-          <img src="/trinity.png" alt="logo" className="h-10 w-10 object-cover" />
+        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-black ring-2 overflow-hidden">
+          <img src="/logojj.png" alt="logo" className="h-10 w-10 object-cover" />
         </div>
         <div className="leading-tight">
           <p className="text-sm font-semibold text-white">Trinity</p>
@@ -42,7 +48,7 @@ export default function Sidebar() {
 
         <button
           type="button"
-          onClick={logout}
+          onClick={handleLogout}
           className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-red-700 px-3 py-2 text-xs font-medium text-neutral-200 hover:bg-red-700 hover:text-white transition"
         >
           <LogOut className="h-4 w-4" />
