@@ -13,6 +13,10 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(event: FormEvent) {
+    if (email === '' || password === '') {
+      setError('Preencha todos os campos.')
+      return
+    }
     event.preventDefault();
     setError(null);
     setSubmitting(true);
@@ -27,12 +31,13 @@ export default function LoginPage() {
 
       if (token) {
         localStorage.setItem("token", token);
+        localStorage.setItem("email", email);
       }
 
       navigate("/", { replace: true });
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
-      if (err.response?.status === 401) {
+      if (err.response?.status !== 200) {
         setError("Credenciais inválidas.");
       } else {
         setError("Erro ao conectar com o servidor.");
@@ -48,7 +53,7 @@ export default function LoginPage() {
     if (token) {
       navigate("/", { replace: true });
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (

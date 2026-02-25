@@ -45,8 +45,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
   function handleLogout() {
     setToken(null)
     setUser(null)
-    localStorage.removeItem('trinity_token')
-    localStorage.removeItem('trinity_user')
+    localStorage.removeItem('email')
+    localStorage.removeItem('token')
   }
 
   function hasRole(role: UserRole) {

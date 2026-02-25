@@ -83,7 +83,10 @@ export default function RegisterPage() {
               </div>
 
               <div>
-                <label className="block mb-2 text-sm">Nome da Academia</label>
+                <label className="block mb-2 text-sm">Nome da Academia </label>
+                <p className="mb-2 text-xs text-neutral-400">
+                  Exemplo: Trinity Jiu-Jitsu
+                </p>
                 <input
                   className="w-full rounded-xl border border-neutral-700 bg-black px-4 py-3 text-white focus:ring-2 focus:ring-red-500"
                   value={academy}
