@@ -27,11 +27,17 @@ export default function LoginPage() {
         password,
       });
 
-      const { token } = response.data;
+      const { role, token, academic } = response.data;
+
+      if (role !== "ADMIN") {
+        setError("Acesso negado.");
+        return
+      }
 
       if (token) {
         localStorage.setItem("token", token);
         localStorage.setItem("email", email);
+        localStorage.setItem("academic", academic);
       }
 
       navigate("/", { replace: true });
