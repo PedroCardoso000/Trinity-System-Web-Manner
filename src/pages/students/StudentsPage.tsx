@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Users, Plus, Edit, Trash2, X } from 'lucide-react'
 import apiCore from '../../api/apiCore'
 import Loading from '../../components/Loading'
+import ConfirmModal from '../../components/ConfirmModal'
 
 type Faixa =
   | 'BRANCA'
@@ -35,6 +36,7 @@ export default function StudentsPage() {
   const [saving, setSaving] = useState(false)
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<Student | null>(null)
+  const [deletingId, setDeletingId] = useState<number | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [toast, setToast] = useState<string | null>(null)
 
@@ -170,19 +172,18 @@ export default function StudentsPage() {
     }
   }
 
-  const handleDelete = async (id: number) => {
-    const confirmDelete = window.confirm(
-      'Tem certeza que deseja excluir este aluno?'
-    )
-    if (!confirmDelete) return
+  const handleDelete = async () => {
+    if (!deletingId) return
 
     try {
-      await apiCore.delete(`/alunos/${id}`)
-      setStudents(prev => prev.filter(s => s.id !== id))
+      await apiCore.delete(`/alunos/${deletingId}`)
+      setStudents(prev => prev.filter(s => s.id !== deletingId))
       showToast('Aluno removido com sucesso!')
     } catch (error) {
       console.error(error)
       showToast('Erro ao deletar aluno.')
+    } finally {
+      setDeletingId(null)
     }
   }
 
@@ -272,7 +273,7 @@ export default function StudentsPage() {
               </button>
 
               <button
-                onClick={() => handleDelete(student.id)}
+                onClick={() => setDeletingId(student.id)}
                 className="rounded-lg border border-red-700 p-2 hover:bg-red-700"
               >
                 <Trash2 className="h-4 w-4" />
@@ -402,6 +403,16 @@ export default function StudentsPage() {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={deletingId !== null}
+        onClose={() => setDeletingId(null)}
+        onConfirm={handleDelete}
+        title="Excluir Aluno"
+        message="Tem certeza que deseja excluir este aluno? Esta ação não pode ser desfeita."
+        confirmText="Sim, excluir"
+        cancelText="Não, cancelar"
+      />
     </div>
   )
 }
