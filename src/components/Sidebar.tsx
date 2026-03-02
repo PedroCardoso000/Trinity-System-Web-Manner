@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, Users, Building2, CheckSquare, Award, LogOut } from 'lucide-react'
+import { LayoutDashboard, Users, Building2, CheckSquare, Award, LogOut, UsersRound  } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 
 export default function Sidebar() {
@@ -26,7 +26,8 @@ export default function Sidebar() {
       <nav className="flex-1 px-3 py-6 space-y-1">
         <Item to="/" icon={LayoutDashboard} label="Dashboard" />
         <Item to="/branches" icon={Building2} label="Filiais" />
-        <Item to="/students" icon={Users} label="Alunos" />
+        <Item to="/teachers" icon={Users} label="Professores" />
+        <Item to="/students" icon={UsersRound} label="Alunos" />
         <Item to="/checkin" icon={CheckSquare} label="Check-in" />
         <Item to="/graduations" icon={Award} label="Graduações" />
       </nav>

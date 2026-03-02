@@ -1,0 +1,438 @@
+import { useEffect, useState } from 'react'
+import { Users, Plus, Edit, Trash2, X } from 'lucide-react'
+import apiCore from '../../api/apiCore'
+import Loading from '../../components/Loading'
+import ConfirmModal from '../../components/ConfirmModal'
+
+type Faixa =
+    | 'BRANCA'
+    | 'AZUL'
+    | 'ROXA'
+    | 'MARROM'
+    | 'PRETA'
+
+type Teacher = {
+    id: number
+    nome: string
+    email: string
+    telefone?: string
+    faixa: Faixa
+    quantidadeGraus?: number
+    ativo: boolean
+    branchId: number
+}
+
+type Branch = {
+    id: number
+    name: string
+}
+
+export default function TeachersPage() {
+    const [teachers, setTeachers] = useState<Teacher[]>([])
+    const [branches, setBranches] = useState<Branch[]>([])
+    const [loading, setLoading] = useState(true)
+    const [saving, setSaving] = useState(false)
+    const [open, setOpen] = useState(false)
+    const [editing, setEditing] = useState<Teacher | null>(null)
+    const [deletingId, setDeletingId] = useState<number | null>(null)
+    const [errors, setErrors] = useState<Record<string, string>>({})
+    const [toast, setToast] = useState<string | null>(null)
+
+    const emptyForm: Teacher = {
+        id: 0,
+        nome: '',
+        email: '',
+        telefone: '',
+        faixa: 'BRANCA',
+        quantidadeGraus: 0,
+        ativo: true,
+        branchId: 0,
+    }
+
+    const [form, setForm] = useState<Teacher>(emptyForm)
+
+    const showToast = (message: string) => {
+        setToast(message)
+        setTimeout(() => setToast(null), 3000)
+    }
+
+    const closeModal = () => {
+        setOpen(false)
+        setEditing(null)
+        setForm(emptyForm)
+        setErrors({})
+    }
+
+    function handleChange(
+        e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+    ) {
+        const { name, value } = e.target
+
+        setForm(prev => ({
+            ...prev,
+            [name]:
+                name === 'ativo'
+                    ? value === 'true'
+                    : name === 'quantidadeGraus' || name === 'branchId'
+                        ? Number(value)
+                        : value,
+        }))
+
+        setErrors(prev => ({ ...prev, [name]: '' }))
+    }
+
+    const validate = () => {
+        const newErrors: Record<string, string> = {}
+
+        if (!form.nome.trim())
+            newErrors.nome = 'Nome obrigatório'
+
+        if (!form.email.trim())
+            newErrors.email = 'Email obrigatório'
+
+        if (form.email && !form.email.includes('@'))
+            newErrors.email = 'Email inválido'
+
+        if (!form.branchId)
+            newErrors.branchId = 'Selecione a filial'
+
+        setErrors(newErrors)
+        return Object.keys(newErrors).length === 0
+    }
+
+    const fetchData = async () => {
+        try {
+            const academicId = localStorage.getItem('academic')
+            if (!academicId) return
+
+            const [teachersRes, branchesRes] = await Promise.all([
+                apiCore.get(`/teachers/academic/${academicId}`),
+                apiCore.get(`/branches/academic/${academicId}`),
+            ])
+
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const mappedTeachers = teachersRes.data.map((t: any) => ({
+                id: t.id,
+                nome: t.name,
+                email: t.email,
+                telefone: t.phone,
+                faixa: t.belt,
+                quantidadeGraus: t.quantityDegree,
+                ativo: t.active,
+                branchId: Array.isArray(t.branchId)
+                    ? t.branchId[0] || 0
+                    : t.branchId,
+            }))
+
+            setTeachers(mappedTeachers)
+            setBranches(branchesRes.data)
+        } catch (error) {
+            console.error(error)
+            showToast('Erro ao carregar dados.')
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    useEffect(() => {
+        fetchData()
+    }, [])
+
+    const handleSubmit = async () => {
+        if (!validate()) return
+
+        const academicId = localStorage.getItem('academic')
+        if (!academicId) {
+            showToast('Academia não identificada.')
+            return
+        }
+
+        setSaving(true)
+
+        const payload = {
+            name: form.nome,
+            email: form.email,
+            phone: form.telefone,
+            belt: form.faixa,
+            quantityDegree: form.quantidadeGraus,
+            branchId: [form.branchId], // backend expects List<Long>
+            academicId: Number(academicId),
+            active: form.ativo,
+        }
+
+        try {
+            if (editing) {
+                await apiCore.put(
+                    `/teachers/${editing.id}`,
+                    payload
+                )
+                showToast('Professor atualizado com sucesso!')
+            } else {
+                await apiCore.post(`/teachers`, payload)
+                showToast('Professor criado com sucesso!')
+            }
+
+            await fetchData()
+            closeModal()
+        } catch (error) {
+            console.error(error)
+            showToast('Erro ao salvar professor.')
+        } finally {
+            setSaving(false)
+        }
+    }
+
+    const handleDelete = async () => {
+        if (!deletingId) return
+
+        try {
+            await apiCore.delete(`/teachers/${deletingId}`)
+            setTeachers(prev =>
+                prev.filter(t => t.id !== deletingId)
+            )
+            showToast('Professor removido com sucesso!')
+        } catch (error) {
+            console.error(error)
+            showToast('Erro ao deletar professor.')
+        } finally {
+            setDeletingId(null)
+        }
+    }
+
+    const isFormValid =
+        form.nome &&
+        form.email &&
+        form.branchId !== 0
+
+    return (
+        <div className="min-h-screen bg-black text-white px-10 py-8 space-y-8">
+
+            {toast && (
+                <div className="fixed top-5 right-5 bg-red-700 px-4 py-2 rounded-lg shadow-lg z-50">
+                    {toast}
+                </div>
+            )}
+
+            <div className="flex items-center justify-between">
+                <div>
+                    <h1 className="text-2xl font-semibold">
+                        Professores
+                    </h1>
+                    <p className="text-sm text-neutral-400">
+                        Gerencie os professores da academia
+                    </p>
+                </div>
+
+                <button
+                    onClick={() => {
+                        setEditing(null)
+                        setForm(emptyForm)
+                        setOpen(true)
+                    }}
+                    className="flex items-center gap-2 rounded-lg bg-red-700 px-4 py-2 text-sm hover:bg-red-600"
+                >
+                    <Plus className="h-4 w-4" />
+                    Novo professor
+                </button>
+            </div>
+
+            {loading ? (
+                <Loading text="Carregando professores..." />
+            ) : teachers.length === 0 ? (
+                <p className="text-neutral-500 italic">
+                    Nenhum professor cadastrado.
+                </p>
+            ) : (
+                teachers.map(teacher => (
+                    <div
+                        key={teacher.id}
+                        className="flex items-center justify-between rounded-2xl border border-red-800 bg-neutral-900 p-5"
+                    >
+                        <div className="flex items-center gap-4">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-red-700/20">
+                                <Users className="h-6 w-6 text-red-500" />
+                            </div>
+
+                            <div>
+                                <p className="font-medium">
+                                    {teacher.nome}
+                                </p>
+                                <p className="text-sm text-neutral-400">
+                                    {teacher.email}
+                                </p>
+                                <p className="text-xs text-neutral-500">
+                                    Faixa: {teacher.faixa} • Graus: {teacher.quantidadeGraus} • Filial: {branches.find(b => b.id === teacher.branchId)?.name || 'N/A'}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                            <span
+                                className={`rounded-full px-3 py-1 text-xs border ${teacher.ativo
+                                    ? 'border-red-600 text-red-400'
+                                    : 'border-neutral-600 text-neutral-400'
+                                    }`}
+                            >
+                                {teacher.ativo ? 'Ativo' : 'Inativo'}
+                            </span>
+
+                            <button
+                                onClick={() => {
+                                    setEditing(teacher)
+                                    setForm({
+                                        id: teacher.id,
+                                        nome: teacher.nome,
+                                        email: teacher.email,
+                                        telefone: teacher.telefone || '',
+                                        faixa: teacher.faixa,
+                                        quantidadeGraus: teacher.quantidadeGraus || 0,
+                                        ativo: teacher.ativo,
+                                        branchId: teacher.branchId || 0,
+                                    })
+                                    setOpen(true)
+                                }}
+                                className="rounded-lg border border-neutral-700 p-2 hover:bg-neutral-800"
+                            >
+                                <Edit className="h-4 w-4" />
+                            </button>
+
+                            <button
+                                onClick={() => setDeletingId(teacher.id)}
+                                className="rounded-lg border border-red-700 p-2 hover:bg-red-700"
+                            >
+                                <Trash2 className="h-4 w-4" />
+                            </button>
+                        </div>
+                    </div>
+                ))
+            )}
+
+            {/* Modal */}
+
+            {open && (
+                <div className="fixed inset-0 flex items-center justify-center bg-black/70">
+                    <div className="w-full max-w-lg rounded-2xl bg-neutral-900 p-6 space-y-4">
+
+                        <div className="flex justify-between items-center">
+                            <h2 className="text-lg font-semibold">
+                                {editing
+                                    ? 'Editar professor'
+                                    : 'Novo professor'}
+                            </h2>
+                            <button onClick={closeModal}>
+                                <X />
+                            </button>
+                        </div>
+
+                        <div className="space-y-3">
+
+                            <input
+                                name="nome"
+                                value={form.nome}
+                                onChange={handleChange}
+                                placeholder="Nome *"
+                                className="w-full rounded-lg bg-neutral-800 p-2"
+                            />
+                            {errors.nome && (
+                                <span className="text-red-500 text-xs">
+                                    {errors.nome}
+                                </span>
+                            )}
+
+                            <input
+                                name="email"
+                                value={form.email}
+                                onChange={handleChange}
+                                placeholder="Email *"
+                                className="w-full rounded-lg bg-neutral-800 p-2"
+                            />
+                            {errors.email && (
+                                <span className="text-red-500 text-xs">
+                                    {errors.email}
+                                </span>
+                            )}
+
+                            <input
+                                name="telefone"
+                                value={form.telefone}
+                                onChange={handleChange}
+                                placeholder="Telefone"
+                                className="w-full rounded-lg bg-neutral-800 p-2"
+                            />
+
+                            <select
+                                name="faixa"
+                                value={form.faixa}
+                                onChange={handleChange}
+                                className="w-full rounded-lg bg-neutral-800 p-2"
+                            >
+                                <option value="BRANCA">Branca</option>
+                                <option value="AZUL">Azul</option>
+                                <option value="ROXA">Roxa</option>
+                                <option value="MARROM">Marrom</option>
+                                <option value="PRETA">Preta</option>
+                            </select>
+
+                            <input
+                                type="number"
+                                name="quantidadeGraus"
+                                value={form.quantidadeGraus || ''}
+                                onChange={handleChange}
+                                placeholder="Quantidade de graus"
+                                className="w-full rounded-lg bg-neutral-800 p-2"
+                            />
+
+                            <select
+                                name="branchId"
+                                value={form.branchId}
+                                onChange={handleChange}
+                                className="w-full rounded-lg bg-neutral-800 p-2"
+                            >
+                                <option value={0}>Selecione a filial *</option>
+                                {branches.map(branch => (
+                                    <option key={branch.id} value={branch.id}>
+                                        {branch.name}
+                                    </option>
+                                ))}
+                            </select>
+
+                            {errors.branchId && (
+                                <span className="text-red-500 text-xs">
+                                    {errors.branchId}
+                                </span>
+                            )}
+
+                            <select
+                                name="ativo"
+                                value={String(form.ativo)}
+                                onChange={handleChange}
+                                className="w-full rounded-lg bg-neutral-800 p-2"
+                            >
+                                <option value="true">Ativo</option>
+                                <option value="false">Inativo</option>
+                            </select>
+                        </div>
+
+                        <button
+                            onClick={handleSubmit}
+                            disabled={!isFormValid || saving}
+                            className="w-full rounded-lg bg-red-700 py-2 font-medium hover:bg-red-600 disabled:opacity-50"
+                        >
+                            {saving ? 'Salvando...' : 'Salvar'}
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            <ConfirmModal
+                isOpen={deletingId !== null}
+                onClose={() => setDeletingId(null)}
+                onConfirm={handleDelete}
+                title="Excluir Professor"
+                message="Tem certeza que deseja excluir este professor? Esta ação não pode ser desfeita."
+                confirmText="Sim, excluir"
+                cancelText="Não, cancelar"
+            />
+        </div>
+    )
+}
