@@ -1,15 +1,9 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useState } from "react"
 import { Building2 } from "lucide-react"
-import apiCore from '../../api/apiCore'
+import apiCore from "../../api/apiCore"
+import Loading from "../../components/Loading"
 
-const belts = [
-  "BRANCA",
-  "AZUL",
-  "ROXA",
-  "MARROM",
-  "PRETA",
-]
+const belts = ["BRANCA", "AZUL", "ROXA", "MARROM", "PRETA"]
 
 type Aluno = {
   id: number
@@ -21,48 +15,55 @@ type Aluno = {
   ativo: boolean
 }
 
+type GraduationHistory = {
+  id: number
+  dataGraduacao: string
+  faixa: string
+  quantidadeGraus: number
+  observacao: string
+  alunoNome: string
+  branchNome: string
+  academicNome: string
+}
+
 export default function GraduationsPage() {
   const [students, setStudents] = useState<Aluno[]>([])
-  const [history, setHistory] = useState<any[]>([])
+  const [history, setHistory] = useState<GraduationHistory[]>([])
+  const [loading, setLoading] = useState(true)
   const [editingStudent, setEditingStudent] = useState<Aluno | null>(null)
   const [editBelt, setEditBelt] = useState<string>("")
   const [editDegree, setEditDegree] = useState<number>(0)
 
-  // ============================
-  // Buscar alunos do backend
-  // ============================
   useEffect(() => {
-    async function fetchAlunos() {
+    async function fetchData() {
+      setLoading(true)
       try {
-        const academicId = localStorage.getItem("academic") // depois pode pegar do token
-        if (!academicId) {
-          console.error("academicId não encontrado no localStorage")
-          return
-        }
-        const response = await apiCore.get(
-          `/alunos/academia/${Number(academicId)}`
-        )
-        setStudents(response.data)
+        const academicId = localStorage.getItem("academic")
+        if (!academicId) return
+
+        const [studentsResponse, historyResponse] = await Promise.all([
+          apiCore.get(`/alunos/academia/${Number(academicId)}`),
+          apiCore.get("/alunos/graduation-history/all"),
+        ])
+
+        setStudents(studentsResponse.data)
+        setHistory(historyResponse.data)
       } catch (error) {
-        console.error("Erro ao buscar alunos:", error)
+        console.error("Erro ao buscar dados:", error)
+      } finally {
+        setLoading(false)
       }
     }
 
-    fetchAlunos()
+    fetchData()
   }, [])
 
-  // ============================
-  // Abrir modal
-  // ============================
   function openEdit(student: Aluno) {
     setEditingStudent(student)
     setEditBelt(student.faixa)
     setEditDegree(student.quantidadeGraus)
   }
 
-  // ============================
-  // Salvar edição
-  // ============================
   async function saveEdit() {
     if (!editingStudent) return
 
@@ -82,20 +83,26 @@ export default function GraduationsPage() {
       )
 
       setEditingStudent(null)
+
+      const historyResponse = await apiCore.get(
+        "/alunos/graduation-history/all"
+      )
+      setHistory(historyResponse.data)
     } catch (error) {
       console.error("Erro ao atualizar aluno:", error)
     }
   }
 
-  // ============================
-  // Graduar aluno
-  // ============================
+  function getMaxDegrees(belt: string) {
+    if (belt === "PRETA") return 6
+    return 4
+  }
+
   async function graduate(student: Aluno) {
     const currentIndex = belts.indexOf(student.faixa)
     if (currentIndex === belts.length - 1) return
 
     const newBelt = belts[currentIndex + 1]
-    const today = new Date().toLocaleDateString()
 
     try {
       await apiCore.patch("/alunos/faixa-aluno", {
@@ -104,16 +111,6 @@ export default function GraduationsPage() {
         quantidadeGraus: 0,
       })
 
-      setHistory(prev => [
-        {
-          name: student.nome,
-          from: student.faixa,
-          to: newBelt,
-          date: today,
-        },
-        ...prev,
-      ])
-
       setStudents(prev =>
         prev.map(s =>
           s.id === student.id
@@ -121,6 +118,11 @@ export default function GraduationsPage() {
             : s
         )
       )
+
+      const historyResponse = await apiCore.get(
+        "/alunos/graduation-history/all"
+      )
+      setHistory(historyResponse.data)
     } catch (error) {
       console.error("Erro ao graduar:", error)
     }
@@ -137,75 +139,96 @@ export default function GraduationsPage() {
 
       {/* LISTA DE ALUNOS */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {students.map(student => (
-          <div
-            key={student.id}
-            className="rounded-2xl border border-red-800 bg-neutral-900 p-6 space-y-4"
-          >
-            <div>
-              <p className="text-lg font-semibold">{student.nome}</p>
-
-              <div className="mt-4 flex items-center gap-3 flex-wrap">
-                <span className="inline-flex items-center rounded-full border border-red-700 px-3 py-1 text-xs font-medium text-red-300">
-                  {student.faixa}
-                </span>
-                <span className="inline-flex items-center rounded-full border border-neutral-700 px-3 py-1 text-xs font-medium text-neutral-300">
-                  Grau {student.quantidadeGraus}
-                </span>
-              </div>
-
-              <div className="mt-4 flex items-center gap-2 text-sm text-neutral-400">
-                <Building2 className="h-4 w-4" />
-                Branch {student.branchId}
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between text-sm text-neutral-400">
-              {student.faixa !== "FAIXA_PRETA" && (
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => openEdit(student)}
-                    className="rounded-lg border border-red-700 px-4 py-2 text-sm font-medium text-red-400 hover:bg-red-700 hover:text-white transition"
-                  >
-                    Atualizar
-                  </button>
-                  <button
-                    onClick={() => graduate(student)}
-                    className="rounded-lg border border-red-700 px-4 py-2 text-sm font-medium text-red-400 hover:bg-red-700 hover:text-white transition"
-                  >
-                    Graduar
-                  </button>
-                </div>
-              )}
-            </div>
+        {loading ? (
+          <div className="col-span-full py-20">
+            <Loading text="Carregando alunos e histórico..." />
           </div>
-        ))}
+        ) : students.length === 0 ? (
+          <div className="col-span-full py-20 text-center">
+            <p className="text-neutral-500 italic">
+              Nenhum aluno encontrado.
+            </p>
+          </div>
+        ) : (
+          students.map(student => (
+            <div
+              key={student.id}
+              className="rounded-2xl border border-red-800 bg-neutral-900 p-6 space-y-4"
+            >
+              <div>
+                <p className="text-lg font-semibold">{student.nome}</p>
+
+                <div className="mt-4 flex items-center gap-3 flex-wrap">
+                  <span className="inline-flex items-center rounded-full border border-red-700 px-3 py-1 text-xs font-medium text-red-300">
+                    {student.faixa}
+                  </span>
+                  <span className="inline-flex items-center rounded-full border border-neutral-700 px-3 py-1 text-xs font-medium text-neutral-300">
+                    Grau {student.quantidadeGraus}
+                  </span>
+                </div>
+
+                <div className="mt-4 flex items-center gap-2 text-sm text-neutral-400">
+                  <Building2 className="h-4 w-4" />
+                  Branch {student.branchId}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between text-sm text-neutral-400">
+                {student.faixa !== "PRETA" && (
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => openEdit(student)}
+                      className="rounded-lg border border-red-700 px-4 py-2 text-sm font-medium text-red-400 hover:bg-red-700 hover:text-white transition"
+                    >
+                      Atualizar
+                    </button>
+                    <button
+                      onClick={() => graduate(student)}
+                      className="rounded-lg border border-red-700 px-4 py-2 text-sm font-medium text-red-400 hover:bg-red-700 hover:text-white transition"
+                    >
+                      Graduar
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))
+        )}
       </div>
 
-      {/* HISTÓRICO */}
+      {/* HISTÓRICO REAL DO BACKEND */}
       <div className="rounded-2xl border border-red-800 bg-neutral-900 p-6 space-y-4">
-        <h2 className="text-lg font-semibold">Graduações recentes</h2>
+        <h2 className="text-lg font-semibold">Histórico de Graduação</h2>
 
-        {history.length === 0 && (
+        {loading ? (
+          <p className="text-sm text-neutral-500 animate-pulse">
+            Carregando histórico...
+          </p>
+        ) : history.length === 0 ? (
           <p className="text-sm text-neutral-500">
             Nenhuma graduação registrada ainda.
           </p>
-        )}
-
-        {history.map((item, index) => (
-          <div
-            key={index}
-            className="flex justify-between border-b border-neutral-800 pb-3 text-sm"
-          >
-            <div>
-              <p className="font-medium">{item.name}</p>
-              <p className="text-neutral-400">
-                {item.from} → {item.to}
-              </p>
+        ) : (
+          history.map(item => (
+            <div
+              key={item.id}
+              className="flex justify-between border-b border-neutral-800 pb-3 text-sm"
+            >
+              <div>
+                <p className="font-medium">{item.alunoNome}</p>
+                <p className="text-neutral-400">
+                  {item.faixa} • Grau {item.quantidadeGraus}
+                </p>
+                <p className="text-neutral-500 text-xs">
+                  {item.branchNome} — {item.academicNome}
+                </p>
+              </div>
+              <div className="text-neutral-400">
+                {new Date(item.dataGraduacao).toLocaleDateString()}
+              </div>
             </div>
-            <div className="text-neutral-400">{item.date}</div>
-          </div>
-        ))}
+          ))
+        )}
       </div>
 
       {/* MODAL */}
@@ -244,7 +267,10 @@ export default function GraduationsPage() {
                   onChange={e => setEditDegree(Number(e.target.value))}
                   className="mt-1 block w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white"
                 >
-                  {[0, 1, 2, 3, 4].map(degree => (
+                  {Array.from(
+                    { length: getMaxDegrees(editBelt) + 1 },
+                    (_, i) => i
+                  ).map(degree => (
                     <option key={degree} value={degree}>
                       {degree}
                     </option>
