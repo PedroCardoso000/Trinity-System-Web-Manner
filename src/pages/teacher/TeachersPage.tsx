@@ -155,7 +155,7 @@ export default function TeachersPage() {
             phone: form.telefone,
             belt: form.faixa,
             quantityDegree: form.quantidadeGraus,
-            branchId: [form.branchId], // backend expects List<Long>
+            branchId: [form.branchId], 
             academicId: Number(academicId),
             active: form.ativo,
         }
@@ -206,7 +206,6 @@ export default function TeachersPage() {
 
     return (
         <div className="min-h-screen bg-black text-white px-10 py-8 space-y-8">
-
             {toast && (
                 <div className="fixed top-5 right-5 bg-red-700 px-4 py-2 rounded-lg shadow-lg z-50">
                     {toast}
