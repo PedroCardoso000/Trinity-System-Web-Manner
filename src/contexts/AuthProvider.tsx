@@ -1,4 +1,4 @@
-import {  useState, type ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { login as loginRequest } from '../services/authService'
 import type { AuthUser, UserRole } from '../types/auth'
 import { AuthContext, type AuthContextValue } from './AuthContext'
@@ -47,6 +47,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setUser(null)
     localStorage.removeItem('email')
     localStorage.removeItem('token')
+    localStorage.removeItem('name')
+    localStorage.removeItem('academic')
+    localStorage.removeItem('nameAcademic')
   }
 
   function hasRole(role: UserRole) {
