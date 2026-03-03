@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Plus, Edit, Trash2, MapPin, X } from 'lucide-react'
 import apiCore from '../../api/apiCore'
 import Loading from '../../components/Loading'
+import ConfirmModal from '../../components/ConfirmModal'
 import {
   onlyLetters,
   onlyNumbers,
@@ -28,6 +29,7 @@ export default function BranchesPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [editingBranch, setEditingBranch] = useState<Branch | null>(null)
+  const [deletingId, setDeletingId] = useState<number | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [toast, setToast] = useState<string | null>(null)
 
@@ -132,7 +134,15 @@ export default function BranchesPage() {
         showToast('Filial atualizada com sucesso!')
       } else {
         await apiCore.post(`/branches`, {
-          ...form,
+          name: form.name,
+          address: form.address,
+          city: form.city,
+          state: form.state,
+          country: form.country,
+          number: form.number,
+          zipCode: form.zipCode,
+          phone: form.phone,
+          active: form.active,
           academicId: Number(academicId),
         })
         showToast('Filial criada com sucesso!')
@@ -152,19 +162,18 @@ export default function BranchesPage() {
     }
   }
 
-  const handleDelete = async (id: number) => {
-    const confirmDelete = window.confirm(
-      'Tem certeza que deseja excluir esta filial?'
-    )
-    if (!confirmDelete) return
+  const handleDelete = async () => {
+    if (!deletingId) return
 
     try {
-      await apiCore.delete(`/branches/${id}`)
-      setBranches(prev => prev.filter(b => b.id !== id))
+      await apiCore.delete(`/branches/${deletingId}`)
+      setBranches(prev => prev.filter(b => b.id !== deletingId))
       showToast('Filial removida com sucesso!')
     } catch (error) {
       console.error('Erro ao deletar', error)
       showToast('Erro ao deletar filial.')
+    } finally {
+      setDeletingId(null)
     }
   }
 
@@ -264,11 +273,10 @@ export default function BranchesPage() {
                   </p>
 
                   <span
-                    className={`inline-block mt-3 px-3 py-1 rounded-full text-xs ${
-                      branch.active
-                        ? 'bg-red-700/20 text-red-400'
-                        : 'bg-neutral-700/20 text-neutral-400'
-                    }`}
+                    className={`inline-block mt-3 px-3 py-1 rounded-full text-xs ${branch.active
+                      ? 'bg-red-700/20 text-red-400'
+                      : 'bg-neutral-700/20 text-neutral-400'
+                      }`}
                   >
                     {branch.active ? 'Ativa' : 'Inativa'}
                   </span>
@@ -283,7 +291,7 @@ export default function BranchesPage() {
                   </button>
 
                   <button
-                    onClick={() => handleDelete(branch.id)}
+                    onClick={() => setDeletingId(branch.id)}
                     className="p-2 hover:bg-red-700/20 rounded-lg"
                   >
                     <Trash2 className="h-4 w-4 text-red-500" />
@@ -315,9 +323,8 @@ export default function BranchesPage() {
                   placeholder="Nome *"
                   value={form.name}
                   onChange={handleChange}
-                  className={`w-full bg-neutral-800 p-2 rounded border ${
-                    errors.name ? 'border-red-500' : 'border-transparent'
-                  }`}
+                  className={`w-full bg-neutral-800 p-2 rounded border ${errors.name ? 'border-red-500' : 'border-transparent'
+                    }`}
                 />
                 {errors.name && (
                   <span className="text-red-500 text-xs">
@@ -348,9 +355,8 @@ export default function BranchesPage() {
                   placeholder="Cidade *"
                   value={form.city}
                   onChange={handleChange}
-                  className={`w-full bg-neutral-800 p-2 rounded border ${
-                    errors.city ? 'border-red-500' : 'border-transparent'
-                  }`}
+                  className={`w-full bg-neutral-800 p-2 rounded border ${errors.city ? 'border-red-500' : 'border-transparent'
+                    }`}
                 />
                 {errors.city && (
                   <span className="text-red-500 text-xs">
@@ -381,11 +387,10 @@ export default function BranchesPage() {
                   placeholder="CEP *"
                   value={form.zipCode}
                   onChange={handleChange}
-                  className={`w-full bg-neutral-800 p-2 rounded border ${
-                    errors.zipCode
-                      ? 'border-red-500'
-                      : 'border-transparent'
-                  }`}
+                  className={`w-full bg-neutral-800 p-2 rounded border ${errors.zipCode
+                    ? 'border-red-500'
+                    : 'border-transparent'
+                    }`}
                 />
                 {errors.zipCode && (
                   <span className="text-red-500 text-xs">
@@ -400,11 +405,10 @@ export default function BranchesPage() {
                   placeholder="Telefone"
                   value={form.phone}
                   onChange={handleChange}
-                  className={`w-full bg-neutral-800 p-2 rounded border ${
-                    errors.phone
-                      ? 'border-red-500'
-                      : 'border-transparent'
-                  }`}
+                  className={`w-full bg-neutral-800 p-2 rounded border ${errors.phone
+                    ? 'border-red-500'
+                    : 'border-transparent'
+                    }`}
                 />
                 {errors.phone && (
                   <span className="text-red-500 text-xs">
@@ -442,6 +446,16 @@ export default function BranchesPage() {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={deletingId !== null}
+        onClose={() => setDeletingId(null)}
+        onConfirm={handleDelete}
+        title="Excluir Filial"
+        message="Tem certeza que deseja excluir esta filial? Esta ação não pode ser desfeita e removerá todos os dados vinculados a ela."
+        confirmText="Sim, excluir"
+        cancelText="Não, cancelar"
+      />
     </div>
   )
 }

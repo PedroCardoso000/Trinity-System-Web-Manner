@@ -9,6 +9,7 @@ import CheckInPage from '../pages/checkInPage/CheckInPage'
 import ForgotPasswordPage from '../pages/auth/ForgotPasswordPage'
 import RegisterPage from '../pages/auth/RegisterPage'
 import PrivateRoute from "./PrivateRoute";
+import TeachersPage from '../pages/teacher/TeachersPage'
 // import { useAuth } from '../hooks/useAuth'
 // import type { UserRole } from '../types/auth'
 // import type { JSX } from 'react'
@@ -45,6 +46,7 @@ export default function AppRouter() {
         <Route element={<PrivateRoute />}>
           <Route element={<DashboardLayout />}>
             <Route path="/" element={<DashboardPage />} />
+            <Route path="/teachers" element={<TeachersPage />} />
             <Route path="/students" element={<StudentsPage />} />
             <Route path="/branches" element={<BranchesPage />} />
             <Route path="/graduations" element={<GraduationsPage />} />

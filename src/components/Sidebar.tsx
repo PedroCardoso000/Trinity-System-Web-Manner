@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, Users, Building2, CheckSquare, Award, LogOut } from 'lucide-react'
+import { LayoutDashboard, Users, Building2, CheckSquare, Award, LogOut, UsersRound } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 
 export default function Sidebar() {
@@ -11,6 +11,9 @@ export default function Sidebar() {
     navigate('/login', { replace: true })
   }
 
+  const name = localStorage.getItem("name")
+  const nameAcademic = localStorage.getItem("nameAcademic")
+
   return (
     <aside className="flex h-screen w-72 flex-col bg-gradient-to-b from-black to-neutral-950 border-r border-red-900/60">
       <div className="px-6 py-6 border-b border-red-900/60 flex items-center gap-3">
@@ -18,7 +21,7 @@ export default function Sidebar() {
           <img src="/logojj.png" alt="logo" className="h-10 w-10 object-cover" />
         </div>
         <div className="leading-tight">
-          <p className="text-sm font-semibold text-white">Trinity</p>
+          <p className="text-sm font-semibold text-white">{nameAcademic == null ? '' : nameAcademic}</p>
           <p className="text-xs text-neutral-300">Jiu-Jitsu Academy</p>
         </div>
       </div>
@@ -26,7 +29,8 @@ export default function Sidebar() {
       <nav className="flex-1 px-3 py-6 space-y-1">
         <Item to="/" icon={LayoutDashboard} label="Dashboard" />
         <Item to="/branches" icon={Building2} label="Filiais" />
-        <Item to="/students" icon={Users} label="Alunos" />
+        <Item to="/teachers" icon={Users} label="Professores" />
+        <Item to="/students" icon={UsersRound} label="Alunos" />
         <Item to="/checkin" icon={CheckSquare} label="Check-in" />
         <Item to="/graduations" icon={Award} label="Graduações" />
       </nav>
@@ -38,7 +42,7 @@ export default function Sidebar() {
           </div>
           <div className="flex-1">
             <p className="text-sm font-medium text-white truncate">
-              {user?.name ?? 'Usuário'}
+               {name == null ? 'Usuário' : name}
             </p>
             <p className="text-xs text-neutral-400">
               {user?.role === 'ADMIN' ? 'Administrador' : 'Professor'}
@@ -75,10 +79,9 @@ function Item({
       className={({ isActive }) =>
         `
         flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition
-        ${
-          isActive
-            ? 'bg-red-600 text-white'
-            : 'text-white/80 hover:bg-white/10'
+        ${isActive
+          ? 'bg-red-600 text-white'
+          : 'text-white/80 hover:bg-white/10'
         }
       `
       }
