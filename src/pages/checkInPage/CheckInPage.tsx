@@ -1,217 +1,207 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Building2, Check, X, Plus } from 'lucide-react'
-
-/* =======================
-   TIPOS (espelhando backend)
-======================= */
-
-type Branch = {
-  id: number
-  name: string
-}
-
-type Aula = {
-  id: number
-  nome: string
-  dataHora: string
-  branchId: number
-}
-
-type Aluno = {
-  id: number
-  nome: string
-  faixa: string
-  branchId: number
-}
-
-type Attendance = {
-  id: number
-  alunoId: number
-  aulaId: number
-  status: 'PRESENTE' | 'AUSENTE'
-}
-
-/* =======================
-   MOCK DATA
-======================= */
-
-const BRANCHES: Branch[] = [
-  { id: 1, name: 'Trinity Centro' },
-  { id: 2, name: 'Trinity Zona Norte' },
-]
-
-const AULAS: Aula[] = [
-  { id: 1, nome: 'No-Gi 19h', dataHora: '2026-01-18T19:00', branchId: 1 },
-  { id: 2, nome: 'Gi 20h', dataHora: '2026-01-18T20:00', branchId: 1 },
-  { id: 3, nome: 'Kids 18h', dataHora: '2026-01-18T18:00', branchId: 2 },
-]
-
-const ALUNOS: Aluno[] = [
-  { id: 1, nome: 'João Silva', faixa: 'Azul', branchId: 1 },
-  { id: 2, nome: 'Pedro Santos', faixa: 'Branca', branchId: 1 },
-  { id: 3, nome: 'Lucas Costa', faixa: 'Roxa', branchId: 2 },
-]
-
-/* =======================
-   COMPONENTE
-======================= */
+import apiCore from '../../api/apiCore'
+import type { Branch } from '../../types/Branch'
+import type { ClassRoom } from '../../types/ClassRoom'
+import type { Student } from '../../types/Student'
+import type { Attendance } from '../../types/Attendance'
+import Loading from '../../components/Loading'
 
 export default function CheckInPage() {
-  const [selectedBranch, setSelectedBranch] = useState<number | null>(null)
-  const [selectedAula, setSelectedAula] = useState<number | null>(null)
+
+  const [branches, setBranches] = useState<Branch[]>([])
+  const [classRooms, setClassRooms] = useState<ClassRoom[]>([])
+  const [students, setStudents] = useState<Student[]>([])
   const [attendances, setAttendances] = useState<Attendance[]>([])
+
+  const [selectedBranch, setSelectedBranch] = useState<number | null>(null)
+  const [selectedClassRoom, setSelectedClassRoom] = useState<number | null>(null)
   const [studentToAdd, setStudentToAdd] = useState<number | null>(null)
+  const [loading, setLoading] = useState(false)
 
-  const aulasFiltradas = AULAS.filter(a => a.branchId === selectedBranch)
-  const alunosDaFilial = ALUNOS.filter(a => a.branchId === selectedBranch)
-  const presencasDaAula = attendances.filter(a => a.aulaId === selectedAula)
+  const academicId = localStorage.getItem('academic')
 
-  function registrarCheckIn(alunoId: number) {
-    setAttendances(prev => {
-      const existente = prev.find(
-        a => a.alunoId === alunoId && a.aulaId === selectedAula
-      )
+  /* ================= LOAD FILIAIS ================= */
 
-      if (existente) {
-        // Atualiza status
-        return prev.map(a =>
-          a.alunoId === alunoId && a.aulaId === selectedAula
-            ? { ...a, status: 'PRESENTE' }
-            : a
-        )
+  useEffect(() => {
+    async function loadBranches() {
+      if (!academicId) return
+      try {
+        const res = await apiCore.get(`/branches/academic/${academicId}`)
+        setBranches(res?.data)
+        
+        // Se houver filiais e nenhuma selecionada, seleciona a primeira
+        if (res.data.length > 0 && !selectedBranch) {
+          setSelectedBranch(res?.data[0]?.id)
+        }
+      } catch (error) {
+        console.error('Erro ao carregar filiais:', error)
       }
+    }
+    loadBranches()
+  }, [academicId])
 
-      // Cria novo se não existir
-      return [
-        ...prev,
-        {
-          id: Date.now(),
-          alunoId,
-          aulaId: selectedAula!,
-          status: 'PRESENTE',
-        },
-      ]
-    })
-  }
+  /* ================= LOAD AULAS E ALUNOS ================= */
 
+  useEffect(() => {
+    async function loadBranchData() {
+      if (!selectedBranch) return
+      
+      setLoading(true)
+      try {
+        const [classesRes, studentsRes] = await Promise.all([
+          apiCore.get(`/class-schedules/branch/${selectedBranch}`),
+          apiCore.get(`/alunos/branch/${selectedBranch}/academia/${academicId}`)
+        ])
+        
+        setClassRooms(classesRes.data)
+        setStudents(studentsRes.data)
+      } catch (error) {
+        console.error('Erro ao carregar dados da filial:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadBranchData()
+  }, [selectedBranch])
 
-  function ausentarCheckIn(alunoId: number) {
-    setAttendances(prev =>
-      prev.map(a =>
-        a.alunoId === alunoId && a.aulaId === selectedAula
-          ? { ...a, status: 'AUSENTE' }
-          : a
-      )
+  /* ================= LOAD PRESENÇAS ================= */
+
+  useEffect(() => {
+    if (!selectedClassRoom) return
+
+    apiCore.get(`/attendances/classroom/${selectedClassRoom}`)
+      .then(res => setAttendances(res.data))
+
+  }, [selectedClassRoom])
+
+  /* ================= CHECK-IN ================= */
+
+  async function registrarCheckIn(studentId: number) {
+
+    const existente = attendances.find(
+      a => a.studentId === studentId
     )
+
+    if (existente) {
+      await apiCore.put(`/attendances/${existente.id}`, {
+        ...existente,
+        status: 'PRESENTE'
+      })
+    } else {
+      await apiCore.post('/attendances', {
+        studentId,
+        classRoomId: selectedClassRoom,
+        status: 'PRESENTE'
+      })
+    }
+
+    reloadAttendances()
   }
 
+  async function ausentarCheckIn(studentId: number) {
 
-  function adicionarAlunoNaAula() {
+    const existente = attendances.find(
+      a => a.studentId === studentId
+    )
+
+    if (!existente) return
+
+    await apiCore.put(`/attendances/${existente.id}`, {
+      ...existente,
+      status: 'AUSENTE'
+    })
+
+    reloadAttendances()
+  }
+
+  async function adicionarAlunoNaAula() {
+
     if (!studentToAdd) return
 
-    setAttendances(prev => {
-      const jaExiste = prev.find(
-        a => a.alunoId === studentToAdd && a.aulaId === selectedAula
-      )
-
-      if (jaExiste) return prev // não duplica
-
-      return [
-        ...prev,
-        {
-          id: Date.now(),
-          alunoId: studentToAdd,
-          aulaId: selectedAula!,
-          status: 'PRESENTE',
-        },
-      ]
+    await apiCore.post('/attendances', {
+      studentId: studentToAdd,
+      classRoomId: selectedClassRoom,
+      status: 'PRESENTE'
     })
 
     setStudentToAdd(null)
+    reloadAttendances()
+  }
+
+  function reloadAttendances() {
+    apiCore
+      .get(`/attendances/class-room/${selectedClassRoom}`)
+      .then(res => setAttendances(res.data))
   }
 
   return (
     <div className="min-h-screen bg-black text-white px-10 py-8 space-y-10">
 
-      <header>
-        <h1 className="text-2xl font-semibold">Check-in Geral</h1>
-        <p className="text-sm text-neutral-400">
-          Gerencie aulas e presenças por filial
-        </p>
-      </header>
+      <h1 className="text-2xl font-semibold">Check-in Geral</h1>
 
-      {/* ================= FILIAIS ================= */}
-      <div className="space-y-4">
-        <h2 className="text-lg font-semibold">Filiais</h2>
-
-        <div className="flex gap-4 flex-wrap">
-          {BRANCHES.map(branch => (
-            <button
-              key={branch.id}
-              onClick={() => {
-                setSelectedBranch(branch.id)
-                setSelectedAula(null)
-              }}
-              className={`rounded-xl border px-5 py-3 transition
-                ${selectedBranch === branch.id
-                  ? 'border-red-600 bg-red-700/20'
-                  : 'border-neutral-700 bg-neutral-900'
-                }
-              `}
-            >
-              <div className="flex items-center gap-2">
-                <Building2 className="h-4 w-4" />
-                {branch.name}
-              </div>
-            </button>
-          ))}
-        </div>
+      {/* FILIAIS */}
+      <div className="flex gap-4 flex-wrap">
+        {branches.map(branch => (
+          <button
+            key={branch.id}
+            onClick={() => {
+              setSelectedBranch(branch.id)
+              setSelectedClassRoom(null)
+            }}
+            className={`rounded-xl border px-5 py-3
+              ${selectedBranch === branch.id
+                ? 'border-red-600 bg-red-700/20'
+                : 'border-neutral-700 bg-neutral-900'
+              }`}
+          >
+            <Building2 className="h-4 w-4 inline mr-2" />
+            {branch.name}
+          </button>
+        ))}
       </div>
 
-      {/* ================= AULAS ================= */}
+      {/* AULAS */}
       {selectedBranch && (
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold">Aulas da Filial</h2>
-
-          <div className="grid md:grid-cols-2 gap-4">
-            {aulasFiltradas.map(aula => (
+        <div className="grid md:grid-cols-2 gap-4">
+          {loading ? (
+            <div className="col-span-full py-10">
+              <Loading text="Buscando aulas e alunos..." />
+            </div>
+          ) : classRooms.length === 0 ? (
+            <p className="text-neutral-500 italic">Nenhuma aula encontrada para esta filial.</p>
+          ) : (
+            classRooms.map(aula => (
               <div
                 key={aula.id}
-                onClick={() => setSelectedAula(aula.id)}
-                className={`cursor-pointer rounded-2xl border p-5 transition
-                  ${selectedAula === aula.id
+                onClick={() => setSelectedClassRoom(aula.id)}
+                className={`cursor-pointer rounded-2xl border p-5
+                  ${selectedClassRoom === aula.id
                     ? 'border-red-600 bg-red-700/10'
                     : 'border-neutral-700 bg-neutral-900'
-                  }
-                `}
+                  }`}
               >
-                <p className="font-semibold">{aula.nome}</p>
-                <p className="text-sm text-neutral-400">
-                  {new Date(aula.dataHora).toLocaleString()}
+                <p className="font-semibold">
+                  {new Date(aula.dateTime).toLocaleString()}
                 </p>
               </div>
-            ))}
-          </div>
+            ))
+          )}
         </div>
       )}
 
-      {/* ================= LISTA DE PRESENÇA ================= */}
-      {selectedAula && (
-        <div className="space-y-6">
+      {/* PRESENÇA */}
+      {selectedClassRoom && (
+        <div>
 
-          <h2 className="text-lg font-semibold">
-            Lista de Presença
-          </h2>
-
-          {/* INSERIR ALUNO */}
-          <div className="flex gap-3">
+          <div className="flex gap-3 mb-6">
             <select
               className="bg-neutral-900 border border-neutral-700 rounded-lg p-2"
               value={studentToAdd || ''}
               onChange={e => setStudentToAdd(Number(e.target.value))}
             >
               <option value="">Selecionar aluno</option>
-              {alunosDaFilial.map(aluno => (
+              {students.map(aluno => (
                 <option key={aluno.id} value={aluno.id}>
                   {aluno.nome}
                 </option>
@@ -220,64 +210,45 @@ export default function CheckInPage() {
 
             <button
               onClick={adicionarAlunoNaAula}
-              className="flex items-center gap-2 bg-red-700 px-4 py-2 rounded-lg hover:bg-red-600"
+              className="bg-red-700 px-4 py-2 rounded-lg"
             >
-              <Plus className="h-4 w-4" />
+              <Plus className="h-4 w-4 inline mr-2" />
               Inserir aluno
             </button>
           </div>
 
-          {/* TABELA */}
-          <div className="rounded-2xl border border-neutral-700 overflow-hidden">
-            <table className="w-full text-left">
-              <thead className="bg-neutral-900">
-                <tr>
-                  <th className="p-4">Aluno</th>
-                  <th className="p-4">Faixa</th>
-                  <th className="p-4">Status</th>
-                  <th className="p-4">Ações</th>
-                </tr>
-              </thead>
+          <table className="w-full">
+            <thead>
+              <tr>
+                <th>Aluno</th>
+                <th>Status</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
 
-              <tbody>
-                {presencasDaAula.map(att => {
-                  const aluno = ALUNOS.find(a => a.id === att.alunoId)
-                  if (!aluno) return null
+            <tbody>
+              {attendances.map(att => {
 
-                  return (
-                    <tr key={att.id} className="border-t border-neutral-800">
-                      <td className="p-4">{aluno.nome}</td>
-                      <td className="p-4">{aluno.faixa}</td>
-                      <td className="p-4">
-                        {att.status === 'PRESENTE' ? (
-                          <span className="text-red-400">Presente</span>
-                        ) : (
-                          <span className="text-neutral-400">Ausente</span>
-                        )}
-                      </td>
-                      <td className="p-4 flex gap-3">
-                        <button
-                          onClick={() => registrarCheckIn(aluno.id)}
-                          className="bg-red-700 px-3 py-1 rounded-lg flex items-center gap-1 hover:bg-red-600"
-                        >
-                          <Check className="h-4 w-4" />
-                          Check-in
-                        </button>
+                const aluno = students.find(s => s.id === att.studentId)
+                if (!aluno) return null
 
-                        <button
-                          onClick={() => ausentarCheckIn(aluno.id)}
-                          className="border border-neutral-700 px-3 py-1 rounded-lg flex items-center gap-1 hover:bg-neutral-800"
-                        >
-                          <X className="h-4 w-4" />
-                          Ausentar
-                        </button>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
+                return (
+                  <tr key={att.id}>
+                    <td>{aluno.nome}</td>
+                    <td>{att.status}</td>
+                    <td className="flex gap-3">
+                      <button onClick={() => registrarCheckIn(aluno.id)}>
+                        <Check className="h-4 w-4" />
+                      </button>
+                      <button onClick={() => ausentarCheckIn(aluno.id)}>
+                        <X className="h-4 w-4" />
+                      </button>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
         </div>
       )}
     </div>

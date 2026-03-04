@@ -3,31 +3,12 @@ import { Users, Plus, Edit, Trash2, X } from 'lucide-react'
 import apiCore from '../../api/apiCore'
 import Loading from '../../components/Loading'
 import ConfirmModal from '../../components/ConfirmModal'
+import type { Student } from '../../types/Student'
+import type { Branch } from '../../types/Branch'
 
-type Faixa =
-  | 'BRANCA'
-  | 'AZUL'
-  | 'ROXA'
-  | 'MARROM'
-  | 'PRETA'
 
-type Student = {
-  id: number
-  nome: string
-  email: string
-  telefone?: string
-  anoInicioNaTrinity?: number
-  faixa: Faixa
-  quantidadeGraus?: number
-  ativo: boolean
-  userId?: number
-  branchId: number
-}
 
-type Branch = {
-  id: number
-  name: string
-}
+
 
 export default function StudentsPage() {
   const [students, setStudents] = useState<Student[]>([])
@@ -79,8 +60,8 @@ export default function StudentsPage() {
           : name === 'anoInicioNaTrinity' ||
             name === 'quantidadeGraus' ||
             name === 'branchId'
-          ? Number(value)
-          : value,
+            ? Number(value)
+            : value,
     }))
 
     setErrors(prev => ({ ...prev, [name]: '' }))
@@ -134,7 +115,7 @@ export default function StudentsPage() {
 
   useEffect(() => {
     fetchData()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const handleSubmit = async () => {
@@ -253,11 +234,10 @@ export default function StudentsPage() {
 
             <div className="flex items-center gap-3">
               <span
-                className={`rounded-full px-3 py-1 text-xs border ${
-                  student.ativo
+                className={`rounded-full px-3 py-1 text-xs border ${student.ativo
                     ? 'border-red-600 text-red-400'
                     : 'border-neutral-600 text-neutral-400'
-                }`}
+                  }`}
               >
                 {student.ativo ? 'Ativo' : 'Inativo'}
               </span>
