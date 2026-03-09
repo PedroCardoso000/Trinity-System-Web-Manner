@@ -2,7 +2,10 @@ import { useEffect, useState } from 'react'
 import {
   Building2,
   Calendar as CalendarIcon,
-  Search
+  Search,
+  Check,
+  X,
+  Plus
 } from 'lucide-react'
 
 import apiCore from '../../api/apiCore'
@@ -25,15 +28,13 @@ export default function CheckInPage() {
 
   const [branches, setBranches] = useState<Branch[]>([])
   const [classRooms, setClassRooms] = useState<ClassRoom[]>([])
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [students, setStudents] = useState<Student[]>([])
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [attendances, setAttendances] = useState<Attendance[]>([])
 
   const [selectedBranch, setSelectedBranch] = useState<number | null>(null)
   const [selectedClassRoom, setSelectedClassRoom] = useState<number | null>(null)
 
-  const [studentToAdd, setStudentToAdd] = useState<number | null>(null)
+  const [selectedStudent, setSelectedStudent] = useState<number | null>(null)
 
   const [selectedDate, setSelectedDate] = useState(
     new Date().toISOString().split('T')[0]
@@ -46,7 +47,7 @@ export default function CheckInPage() {
 
   const academicId = localStorage.getItem('academic')
 
-  /* ================= LOAD FILIAIS ================= */
+  /* ================= FILIAIS ================= */
 
   useEffect(() => {
 
@@ -66,7 +67,7 @@ export default function CheckInPage() {
 
   }, [academicId])
 
-  /* ================= LOAD ALUNOS ================= */
+  /* ================= ALUNOS DA FILIAL ================= */
 
   useEffect(() => {
 
@@ -101,28 +102,19 @@ export default function CheckInPage() {
       .finally(() => setLoading(false))
   }
 
-  /* ================= LOAD ATTENDANCES ================= */
+  /* ================= LISTA DE CHAMADA ================= */
 
-  useEffect(() => {
+  const carregarLista = (classRoomId: number) => {
 
-    if (!selectedClassRoom) return
-
-    // eslint-disable-next-line react-hooks/immutability
-    reloadAttendances()
-
-  }, [selectedClassRoom])
-
-  const reloadAttendances = () => {
+    setSelectedClassRoom(classRoomId)
 
     apiCore
-      .get(`/attendances/classroom/${selectedClassRoom}`)
+      .get(`/attendances/classroom/${classRoomId}`)
       .then(res => setAttendances(res.data))
-
   }
 
   /* ================= CHECK-IN ================= */
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async function registrarCheckIn(alunoId: number) {
 
     if (!selectedClassRoom) return
@@ -134,10 +126,9 @@ export default function CheckInPage() {
       }
     })
 
-    reloadAttendances()
+    carregarLista(selectedClassRoom)
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async function ausentarCheckIn(alunoId: number) {
 
     if (!selectedClassRoom) return
@@ -149,22 +140,25 @@ export default function CheckInPage() {
       }
     })
 
-    reloadAttendances()
+    carregarLista(selectedClassRoom)
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  /* ================= ADICIONAR PRESENÇA MANUAL ================= */
+
   async function adicionarAlunoNaAula() {
 
-    if (!studentToAdd || !selectedClassRoom) return
+    if (!selectedStudent || !selectedClassRoom) return
 
-    await apiCore.post(`/attendances/pendant`, {
-      alunoId: studentToAdd,
-      classRoomId: selectedClassRoom
+    await apiCore.post(`/attendances/check-in`, null, {
+      params: {
+        alunoId: selectedStudent,
+        classRoomId: selectedClassRoom
+      }
     })
 
-    setStudentToAdd(null)
+    setSelectedStudent(null)
 
-    reloadAttendances()
+    carregarLista(selectedClassRoom)
   }
 
   /* ================= UI ================= */
@@ -188,6 +182,7 @@ export default function CheckInPage() {
             onClick={() => {
               setSelectedBranch(branch.id)
               setSelectedClassRoom(null)
+              setClassRooms([])
             }}
             className={`rounded-xl border px-5 py-3
             ${selectedBranch === branch.id
@@ -197,7 +192,6 @@ export default function CheckInPage() {
           >
 
             <Building2 className="h-4 w-4 inline mr-2" />
-
             {branch.name}
 
           </button>
@@ -209,8 +203,6 @@ export default function CheckInPage() {
       {/* FILTROS */}
 
       <div className="flex gap-4 items-end flex-wrap">
-
-        {/* DATA */}
 
         <div className="flex flex-col gap-1">
 
@@ -232,8 +224,6 @@ export default function CheckInPage() {
           </div>
 
         </div>
-
-        {/* DIA DA SEMANA */}
 
         <div className="flex flex-col gap-1">
 
@@ -262,31 +252,13 @@ export default function CheckInPage() {
 
         </div>
 
-        {/* BOTÃO BUSCAR */}
-
         <button
           onClick={buscarTurmas}
           className="bg-red-700 hover:bg-red-600 px-5 py-2 rounded-lg flex items-center gap-2"
         >
 
           <Search className="w-4 h-4" />
-
           Buscar
-
-        </button>
-
-        {/* LIMPAR */}
-
-        <button
-          onClick={() => {
-            setSelectedDate('')
-            setSelectedDayOfWeek('')
-            setClassRooms([])
-          }}
-          className="border border-neutral-700 px-4 py-2 rounded-lg text-sm"
-        >
-
-          Limpar
 
         </button>
 
@@ -306,7 +278,7 @@ export default function CheckInPage() {
 
             <div
               key={aula.id}
-              onClick={() => setSelectedClassRoom(aula.id)}
+              onClick={() => carregarLista(aula.id)}
               className="border border-neutral-700 rounded-xl p-4 cursor-pointer hover:border-red-600"
             >
 
@@ -336,6 +308,116 @@ export default function CheckInPage() {
         })}
 
       </div>
+
+      {/* LISTA DE CHAMADA */}
+
+      {selectedClassRoom && (
+
+        <div className="space-y-6">
+
+          <h2 className="text-xl font-semibold">
+            Lista de chamada
+          </h2>
+
+          {/* ADICIONAR ALUNO */}
+
+          <div className="flex gap-3">
+
+            <select
+              value={selectedStudent || ''}
+              onChange={e => setSelectedStudent(Number(e.target.value))}
+              className="bg-neutral-900 border border-neutral-700 rounded-lg px-3 py-2"
+            >
+
+              <option value="">Selecionar aluno</option>
+
+              {students.map(student => (
+
+                <option key={student.id} value={student.id}>
+                  {student.nome}
+                </option>
+
+              ))}
+
+            </select>
+
+            <button
+              onClick={adicionarAlunoNaAula}
+              className="bg-green-600 px-4 py-2 rounded-lg flex items-center gap-2"
+            >
+
+              <Plus size={16} />
+              Inserir presença
+
+            </button>
+
+          </div>
+
+          {/* TABELA */}
+
+          <table className="w-full">
+
+            <thead>
+
+              <tr className="border-b border-neutral-700">
+
+                <th className="text-left py-2">Aluno</th>
+                <th>Status</th>
+                <th>Ações</th>
+
+              </tr>
+
+            </thead>
+
+            <tbody>
+
+              {attendances.map(att => {
+
+                const aluno = students.find(
+                  s => s.id === att.studentId
+                )
+
+                if (!aluno) return null
+
+                return (
+
+                  <tr key={att.id} className="border-b border-neutral-800">
+
+                    <td className="py-2">{aluno.nome}</td>
+
+                    <td>{att.status}</td>
+
+                    <td className="flex gap-3">
+
+                      <button
+                        onClick={() => registrarCheckIn(aluno.id)}
+                        className="text-green-500"
+                      >
+                        <Check />
+                      </button>
+
+                      <button
+                        onClick={() => ausentarCheckIn(aluno.id)}
+                        className="text-red-500"
+                      >
+                        <X />
+                      </button>
+
+                    </td>
+
+                  </tr>
+
+                )
+
+              })}
+
+            </tbody>
+
+          </table>
+
+        </div>
+
+      )}
 
     </div>
 
