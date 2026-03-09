@@ -1,5 +1,10 @@
 import { useEffect, useState } from 'react'
-import { Building2, Check, X, Plus } from 'lucide-react'
+import {
+  Building2,
+  Calendar as CalendarIcon,
+  Search
+} from 'lucide-react'
+
 import apiCore from '../../api/apiCore'
 import type { Branch } from '../../types/Branch'
 import type { ClassRoom } from '../../types/ClassRoom'
@@ -7,16 +12,36 @@ import type { Student } from '../../types/Student'
 import type { Attendance } from '../../types/Attendance'
 import Loading from '../../components/Loading'
 
+type DayOfWeek =
+  | 'MONDAY'
+  | 'TUESDAY'
+  | 'WEDNESDAY'
+  | 'THURSDAY'
+  | 'FRIDAY'
+  | 'SATURDAY'
+  | 'SUNDAY'
+
 export default function CheckInPage() {
 
   const [branches, setBranches] = useState<Branch[]>([])
   const [classRooms, setClassRooms] = useState<ClassRoom[]>([])
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [students, setStudents] = useState<Student[]>([])
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [attendances, setAttendances] = useState<Attendance[]>([])
 
   const [selectedBranch, setSelectedBranch] = useState<number | null>(null)
   const [selectedClassRoom, setSelectedClassRoom] = useState<number | null>(null)
+
   const [studentToAdd, setStudentToAdd] = useState<number | null>(null)
+
+  const [selectedDate, setSelectedDate] = useState(
+    new Date().toISOString().split('T')[0]
+  )
+
+  const [selectedDayOfWeek, setSelectedDayOfWeek] =
+    useState<DayOfWeek | ''>('')
+
   const [loading, setLoading] = useState(false)
 
   const academicId = localStorage.getItem('academic')
@@ -24,125 +49,140 @@ export default function CheckInPage() {
   /* ================= LOAD FILIAIS ================= */
 
   useEffect(() => {
-    async function loadBranches() {
-      if (!academicId) return
-      try {
-        const res = await apiCore.get(`/branches/academic/${academicId}`)
-        setBranches(res?.data)
-        
-        // Se houver filiais e nenhuma selecionada, seleciona a primeira
-        if (res.data.length > 0 && !selectedBranch) {
-          setSelectedBranch(res?.data[0]?.id)
+
+    if (!academicId) return
+
+    apiCore
+      .get(`/branches/academic/${academicId}`)
+      .then(res => {
+
+        setBranches(res.data)
+
+        if (res.data.length > 0) {
+          setSelectedBranch(res.data[0].id)
         }
-      } catch (error) {
-        console.error('Erro ao carregar filiais:', error)
-      }
-    }
-    loadBranches()
+
+      })
+
   }, [academicId])
 
-  /* ================= LOAD AULAS E ALUNOS ================= */
+  /* ================= LOAD ALUNOS ================= */
 
   useEffect(() => {
-    async function loadBranchData() {
-      if (!selectedBranch) return
-      
-      setLoading(true)
-      try {
-        const [classesRes, studentsRes] = await Promise.all([
-          apiCore.get(`/class-schedules/branch/${selectedBranch}`),
-          apiCore.get(`/alunos/branch/${selectedBranch}/academia/${academicId}`)
-        ])
-        
-        setClassRooms(classesRes.data)
-        setStudents(studentsRes.data)
-      } catch (error) {
-        console.error('Erro ao carregar dados da filial:', error)
-      } finally {
-        setLoading(false)
-      }
+
+    if (!selectedBranch || !academicId) return
+
+    apiCore
+      .get(`/alunos/branch/${selectedBranch}/academia/${academicId}`)
+      .then(res => setStudents(res.data))
+
+  }, [selectedBranch, academicId])
+
+  /* ================= BUSCAR TURMAS ================= */
+
+  const buscarTurmas = () => {
+
+    if (!selectedBranch || !academicId) return
+
+    setLoading(true)
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const params: any = {
+      branchId: selectedBranch,
+      academicId
     }
-    loadBranchData()
-  }, [selectedBranch])
 
-  /* ================= LOAD PRESENÇAS ================= */
+    if (selectedDayOfWeek) params.dayOfWeek = selectedDayOfWeek
+    if (selectedDate) params.date = selectedDate
+
+    apiCore
+      .get(`/classrooms/filter`, { params })
+      .then(res => setClassRooms(res.data))
+      .finally(() => setLoading(false))
+  }
+
+  /* ================= LOAD ATTENDANCES ================= */
 
   useEffect(() => {
+
     if (!selectedClassRoom) return
 
-    apiCore.get(`/attendances/classroom/${selectedClassRoom}`)
-      .then(res => setAttendances(res.data))
+    // eslint-disable-next-line react-hooks/immutability
+    reloadAttendances()
 
   }, [selectedClassRoom])
 
-  /* ================= CHECK-IN ================= */
+  const reloadAttendances = () => {
 
-  async function registrarCheckIn(studentId: number) {
+    apiCore
+      .get(`/attendances/classroom/${selectedClassRoom}`)
+      .then(res => setAttendances(res.data))
 
-    const existente = attendances.find(
-      a => a.studentId === studentId
-    )
-
-    if (existente) {
-      await apiCore.put(`/attendances/${existente.id}`, {
-        ...existente,
-        status: 'PRESENTE'
-      })
-    } else {
-      await apiCore.post('/attendances', {
-        studentId,
-        classRoomId: selectedClassRoom,
-        status: 'PRESENTE'
-      })
-    }
-
-    reloadAttendances()
   }
 
-  async function ausentarCheckIn(studentId: number) {
+  /* ================= CHECK-IN ================= */
 
-    const existente = attendances.find(
-      a => a.studentId === studentId
-    )
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async function registrarCheckIn(alunoId: number) {
 
-    if (!existente) return
+    if (!selectedClassRoom) return
 
-    await apiCore.put(`/attendances/${existente.id}`, {
-      ...existente,
-      status: 'AUSENTE'
+    await apiCore.post(`/attendances/check-in`, null, {
+      params: {
+        alunoId,
+        classRoomId: selectedClassRoom
+      }
     })
 
     reloadAttendances()
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async function ausentarCheckIn(alunoId: number) {
+
+    if (!selectedClassRoom) return
+
+    await apiCore.patch(`/attendances/absent`, null, {
+      params: {
+        alunoId,
+        classRoomId: selectedClassRoom
+      }
+    })
+
+    reloadAttendances()
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async function adicionarAlunoNaAula() {
 
-    if (!studentToAdd) return
+    if (!studentToAdd || !selectedClassRoom) return
 
-    await apiCore.post('/attendances', {
-      studentId: studentToAdd,
-      classRoomId: selectedClassRoom,
-      status: 'PRESENTE'
+    await apiCore.post(`/attendances/pendant`, {
+      alunoId: studentToAdd,
+      classRoomId: selectedClassRoom
     })
 
     setStudentToAdd(null)
+
     reloadAttendances()
   }
 
-  function reloadAttendances() {
-    apiCore
-      .get(`/attendances/class-room/${selectedClassRoom}`)
-      .then(res => setAttendances(res.data))
-  }
+  /* ================= UI ================= */
 
   return (
+
     <div className="min-h-screen bg-black text-white px-10 py-8 space-y-10">
 
-      <h1 className="text-2xl font-semibold">Check-in Geral</h1>
+      <h1 className="text-2xl font-semibold">
+        Check-in Geral
+      </h1>
 
       {/* FILIAIS */}
+
       <div className="flex gap-4 flex-wrap">
+
         {branches.map(branch => (
+
           <button
             key={branch.id}
             onClick={() => {
@@ -150,107 +190,155 @@ export default function CheckInPage() {
               setSelectedClassRoom(null)
             }}
             className={`rounded-xl border px-5 py-3
-              ${selectedBranch === branch.id
+            ${selectedBranch === branch.id
                 ? 'border-red-600 bg-red-700/20'
-                : 'border-neutral-700 bg-neutral-900'
-              }`}
+                : 'border-neutral-700 bg-neutral-900'}
+            `}
           >
+
             <Building2 className="h-4 w-4 inline mr-2" />
+
             {branch.name}
+
           </button>
+
         ))}
+
       </div>
 
-      {/* AULAS */}
-      {selectedBranch && (
-        <div className="grid md:grid-cols-2 gap-4">
-          {loading ? (
-            <div className="col-span-full py-10">
-              <Loading text="Buscando aulas e alunos..." />
-            </div>
-          ) : classRooms.length === 0 ? (
-            <p className="text-neutral-500 italic">Nenhuma aula encontrada para esta filial.</p>
-          ) : (
-            classRooms.map(aula => (
-              <div
-                key={aula.id}
-                onClick={() => setSelectedClassRoom(aula.id)}
-                className={`cursor-pointer rounded-2xl border p-5
-                  ${selectedClassRoom === aula.id
-                    ? 'border-red-600 bg-red-700/10'
-                    : 'border-neutral-700 bg-neutral-900'
-                  }`}
-              >
-                <p className="font-semibold">
-                  {new Date(aula.dateTime).toLocaleString()}
-                </p>
-              </div>
-            ))
-          )}
-        </div>
-      )}
+      {/* FILTROS */}
 
-      {/* PRESENÇA */}
-      {selectedClassRoom && (
-        <div>
+      <div className="flex gap-4 items-end flex-wrap">
 
-          <div className="flex gap-3 mb-6">
-            <select
-              className="bg-neutral-900 border border-neutral-700 rounded-lg p-2"
-              value={studentToAdd || ''}
-              onChange={e => setStudentToAdd(Number(e.target.value))}
-            >
-              <option value="">Selecionar aluno</option>
-              {students.map(aluno => (
-                <option key={aluno.id} value={aluno.id}>
-                  {aluno.nome}
-                </option>
-              ))}
-            </select>
+        {/* DATA */}
 
-            <button
-              onClick={adicionarAlunoNaAula}
-              className="bg-red-700 px-4 py-2 rounded-lg"
-            >
-              <Plus className="h-4 w-4 inline mr-2" />
-              Inserir aluno
-            </button>
+        <div className="flex flex-col gap-1">
+
+          <label className="text-xs text-neutral-400">
+            Data
+          </label>
+
+          <div className="flex items-center gap-2 bg-neutral-900 border border-neutral-700 rounded-lg px-3 py-2">
+
+            <CalendarIcon className="w-4 h-4 text-neutral-400" />
+
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={e => setSelectedDate(e.target.value)}
+              className="bg-transparent outline-none text-sm"
+            />
+
           </div>
 
-          <table className="w-full">
-            <thead>
-              <tr>
-                <th>Aluno</th>
-                <th>Status</th>
-                <th>Ações</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {attendances.map(att => {
-
-                const aluno = students.find(s => s.id === att.studentId)
-                if (!aluno) return null
-
-                return (
-                  <tr key={att.id}>
-                    <td>{aluno.nome}</td>
-                    <td>{att.status}</td>
-                    <td className="flex gap-3">
-                      <button onClick={() => registrarCheckIn(aluno.id)}>
-                        <Check className="h-4 w-4" />
-                      </button>
-                      <button onClick={() => ausentarCheckIn(aluno.id)}>
-                        <X className="h-4 w-4" />
-                      </button>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
         </div>
-      )}
+
+        {/* DIA DA SEMANA */}
+
+        <div className="flex flex-col gap-1">
+
+          <label className="text-xs text-neutral-400">
+            Dia da semana
+          </label>
+
+          <select
+            value={selectedDayOfWeek}
+            onChange={e =>
+              setSelectedDayOfWeek(e.target.value as DayOfWeek | '')
+            }
+            className="bg-neutral-900 border border-neutral-700 rounded-lg px-3 py-2 text-sm"
+          >
+
+            <option value="">Todos</option>
+            <option value="MONDAY">Segunda</option>
+            <option value="TUESDAY">Terça</option>
+            <option value="WEDNESDAY">Quarta</option>
+            <option value="THURSDAY">Quinta</option>
+            <option value="FRIDAY">Sexta</option>
+            <option value="SATURDAY">Sábado</option>
+            <option value="SUNDAY">Domingo</option>
+
+          </select>
+
+        </div>
+
+        {/* BOTÃO BUSCAR */}
+
+        <button
+          onClick={buscarTurmas}
+          className="bg-red-700 hover:bg-red-600 px-5 py-2 rounded-lg flex items-center gap-2"
+        >
+
+          <Search className="w-4 h-4" />
+
+          Buscar
+
+        </button>
+
+        {/* LIMPAR */}
+
+        <button
+          onClick={() => {
+            setSelectedDate('')
+            setSelectedDayOfWeek('')
+            setClassRooms([])
+          }}
+          className="border border-neutral-700 px-4 py-2 rounded-lg text-sm"
+        >
+
+          Limpar
+
+        </button>
+
+      </div>
+
+      {/* TURMAS */}
+
+      {loading && <Loading text="Buscando turmas..." />}
+
+      <div className="grid grid-cols-3 gap-4">
+
+        {classRooms.map(aula => {
+
+          const data = new Date(aula.dateTime)
+
+          return (
+
+            <div
+              key={aula.id}
+              onClick={() => setSelectedClassRoom(aula.id)}
+              className="border border-neutral-700 rounded-xl p-4 cursor-pointer hover:border-red-600"
+            >
+
+              <p className="text-sm text-red-500">
+
+                {data.toLocaleTimeString('pt-BR', {
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })}
+
+              </p>
+
+              <p className="font-semibold">
+
+                {data.toLocaleDateString('pt-BR', {
+                  weekday: 'long',
+                  day: '2-digit',
+                  month: 'long'
+                })}
+
+              </p>
+
+            </div>
+
+          )
+
+        })}
+
+      </div>
+
     </div>
+
   )
+
 }

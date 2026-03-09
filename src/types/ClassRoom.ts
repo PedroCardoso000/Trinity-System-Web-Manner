@@ -1,8 +1,9 @@
 type ClassRoom = {
   id: number
-  dateTime: string
+  time: string
   branchId: number
   scheduleId: number
+  startDate: string
 }
 
 export type { ClassRoom }
