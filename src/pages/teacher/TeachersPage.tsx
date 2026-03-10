@@ -3,29 +3,9 @@ import { Users, Plus, Edit, Trash2, X } from 'lucide-react'
 import apiCore from '../../api/apiCore'
 import Loading from '../../components/Loading'
 import ConfirmModal from '../../components/ConfirmModal'
+import type { Branch } from '../../types/Branch'
+import type { Teacher } from '../../types/Teacher'
 
-type Faixa =
-    | 'BRANCA'
-    | 'AZUL'
-    | 'ROXA'
-    | 'MARROM'
-    | 'PRETA'
-
-type Teacher = {
-    id: number
-    nome: string
-    email: string
-    telefone?: string
-    faixa: Faixa
-    quantidadeGraus?: number
-    ativo: boolean
-    branchId: number
-}
-
-type Branch = {
-    id: number
-    name: string
-}
 
 export default function TeachersPage() {
     const [teachers, setTeachers] = useState<Teacher[]>([])

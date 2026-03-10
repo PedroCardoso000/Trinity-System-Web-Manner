@@ -9,19 +9,9 @@ import {
   formatPhone,
   formatZipCode,
 } from '../../hooks/validation/Fields'
+import type { Branch } from '@/types/Branch'
 
-interface Branch {
-  id: number
-  name: string
-  address: string
-  city: string
-  state: string
-  country: string
-  zipCode: string
-  number: string
-  phone: string
-  active: boolean
-}
+
 
 export default function BranchesPage() {
   const [branches, setBranches] = useState<Branch[]>([])
