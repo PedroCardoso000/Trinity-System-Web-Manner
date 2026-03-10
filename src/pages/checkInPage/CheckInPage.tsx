@@ -47,6 +47,8 @@ export default function CheckInPage() {
 
   const academicId = localStorage.getItem('academic')
 
+  const branchSelected = selectedBranch !== null
+
   /* ================= FILIAIS ================= */
 
   useEffect(() => {
@@ -55,15 +57,7 @@ export default function CheckInPage() {
 
     apiCore
       .get(`/branches/academic/${academicId}`)
-      .then(res => {
-
-        setBranches(res.data)
-
-        if (res.data.length > 0) {
-          setSelectedBranch(res.data[0].id)
-        }
-
-      })
+      .then(res => setBranches(res.data))
 
   }, [academicId])
 
@@ -143,7 +137,7 @@ export default function CheckInPage() {
     carregarLista(selectedClassRoom)
   }
 
-  /* ================= ADICIONAR PRESENÇA MANUAL ================= */
+  /* ================= ADICIONAR PRESENÇA ================= */
 
   async function adicionarAlunoNaAula() {
 
@@ -216,9 +210,10 @@ export default function CheckInPage() {
 
             <input
               type="date"
+              disabled={!branchSelected}
               value={selectedDate}
               onChange={e => setSelectedDate(e.target.value)}
-              className="bg-transparent outline-none text-sm"
+              className="bg-transparent outline-none text-sm disabled:opacity-40"
             />
 
           </div>
@@ -232,11 +227,12 @@ export default function CheckInPage() {
           </label>
 
           <select
+            disabled={!branchSelected}
             value={selectedDayOfWeek}
             onChange={e =>
               setSelectedDayOfWeek(e.target.value as DayOfWeek | '')
             }
-            className="bg-neutral-900 border border-neutral-700 rounded-lg px-3 py-2 text-sm"
+            className="bg-neutral-900 border border-neutral-700 rounded-lg px-3 py-2 text-sm disabled:opacity-40"
           >
 
             <option value="">Todos</option>
@@ -253,8 +249,9 @@ export default function CheckInPage() {
         </div>
 
         <button
+          disabled={!branchSelected}
           onClick={buscarTurmas}
-          className="bg-red-700 hover:bg-red-600 px-5 py-2 rounded-lg flex items-center gap-2"
+          className="bg-red-700 hover:bg-red-600 px-5 py-2 rounded-lg flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
         >
 
           <Search className="w-4 h-4" />
@@ -264,160 +261,184 @@ export default function CheckInPage() {
 
       </div>
 
-      {/* TURMAS */}
-
       {loading && <Loading text="Buscando turmas..." />}
 
-      <div className="grid grid-cols-3 gap-4">
+      {/* LAYOUT PRINCIPAL */}
 
-        {classRooms.map(aula => {
+      <div className="grid grid-cols-2 gap-10 items-start">
 
-          const data = new Date(aula.dateTime)
+        {/* TURMAS */}
 
-          return (
+        <div>
 
-            <div
-              key={aula.id}
-              onClick={() => carregarLista(aula.id)}
-              className="border border-neutral-700 rounded-xl p-4 cursor-pointer hover:border-red-600"
-            >
-
-              <p className="text-sm text-red-500">
-
-                {data.toLocaleTimeString('pt-BR', {
-                  hour: '2-digit',
-                  minute: '2-digit'
-                })}
-
-              </p>
-
-              <p className="font-semibold">
-
-                {data.toLocaleDateString('pt-BR', {
-                  weekday: 'long',
-                  day: '2-digit',
-                  month: 'long'
-                })}
-
-              </p>
-
-            </div>
-
-          )
-
-        })}
-
-      </div>
-
-      {/* LISTA DE CHAMADA */}
-
-      {selectedClassRoom && (
-
-        <div className="space-y-6">
-
-          <h2 className="text-xl font-semibold">
-            Lista de chamada
+          <h2 className="text-lg font-semibold mb-4">
+            Turmas encontradas
           </h2>
 
-          {/* ADICIONAR ALUNO */}
+          <div className="grid grid-cols-2 gap-4">
 
-          <div className="flex gap-3">
+            {classRooms.map(aula => {
 
-            <select
-              value={selectedStudent || ''}
-              onChange={e => setSelectedStudent(Number(e.target.value))}
-              className="bg-neutral-900 border border-neutral-700 rounded-lg px-3 py-2"
-            >
+              const data = new Date(aula.dateTime)
 
-              <option value="">Selecionar aluno</option>
+              return (
 
-              {students.map(student => (
+                <div
+                  key={aula.id}
+                  onClick={() => carregarLista(aula.id)}
+                  className={`border rounded-xl p-4 cursor-pointer transition
+                  ${selectedClassRoom === aula.id
+                      ? 'border-red-600 bg-red-700/10'
+                      : 'border-neutral-700 hover:border-red-600'
+                    }`}
+                >
 
-                <option key={student.id} value={student.id}>
-                  {student.nome}
-                </option>
+                  <p className="text-sm text-red-500">
 
-              ))}
+                    {data.toLocaleTimeString('pt-BR', {
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
 
-            </select>
+                  </p>
 
-            <button
-              onClick={adicionarAlunoNaAula}
-              className="bg-green-600 px-4 py-2 rounded-lg flex items-center gap-2"
-            >
+                  <p className="font-semibold">
 
-              <Plus size={16} />
-              Inserir presença
+                    {data.toLocaleDateString('pt-BR', {
+                      weekday: 'long',
+                      day: '2-digit',
+                      month: 'long'
+                    })}
 
-            </button>
+                  </p>
+
+                </div>
+
+              )
+
+            })}
 
           </div>
 
-          {/* TABELA */}
+        </div>
 
-          <table className="w-full">
+        {/* LISTA DE CHAMADA */}
 
-            <thead>
+        <div>
 
-              <tr className="border-b border-neutral-700">
+          {selectedClassRoom && (
 
-                <th className="text-left py-2">Aluno</th>
-                <th>Status</th>
-                <th>Ações</th>
+            <div className="space-y-6">
 
-              </tr>
+              <h2 className="text-xl font-semibold">
+                Lista de chamada
+              </h2>
 
-            </thead>
+              <div className="flex gap-3">
 
-            <tbody>
+                <select
+                  value={selectedStudent || ''}
+                  onChange={e => setSelectedStudent(Number(e.target.value))}
+                  className="bg-neutral-900 border border-neutral-700 rounded-lg px-3 py-2"
+                >
 
-              {attendances.map(att => {
+                  <option value="">Selecionar aluno</option>
 
-                const aluno = students.find(
-                  s => s.id === att.studentId
-                )
+                  {students.map(student => (
 
-                if (!aluno) return null
+                    <option key={student.id} value={student.id}>
+                      {student.nome}
+                    </option>
 
-                return (
+                  ))}
 
-                  <tr key={att.id} className="border-b border-neutral-800">
+                </select>
 
-                    <td className="py-2">{aluno.nome}</td>
+                <button
+                  onClick={adicionarAlunoNaAula}
+                  className="bg-green-600 px-4 py-2 rounded-lg flex items-center gap-2"
+                >
 
-                    <td>{att.status}</td>
+                  <Plus size={16} />
+                  Inserir presença
 
-                    <td className="flex gap-3">
+                </button>
 
-                      <button
-                        onClick={() => registrarCheckIn(aluno.id)}
-                        className="text-green-500"
-                      >
-                        <Check />
-                      </button>
+              </div>
 
-                      <button
-                        onClick={() => ausentarCheckIn(aluno.id)}
-                        className="text-red-500"
-                      >
-                        <X />
-                      </button>
+              <div className="max-h-[500px] overflow-y-auto border border-neutral-800 rounded-lg">
 
-                    </td>
+                <table className="w-full">
 
-                  </tr>
+                  <thead>
 
-                )
+                    <tr className="border-b border-neutral-700">
 
-              })}
+                      <th className="text-left py-2 px-3">Aluno</th>
+                      <th>Status</th>
+                      <th>Ações</th>
 
-            </tbody>
+                    </tr>
 
-          </table>
+                  </thead>
+
+                  <tbody>
+
+                    {attendances.map(att => {
+
+                      const aluno = students.find(
+                        s => s.id === att.studentId
+                      )
+
+                      if (!aluno) return null
+
+                      return (
+
+                        <tr key={att.id} className="border-b border-neutral-800">
+
+                          <td className="py-2 px-3">
+                            {aluno.nome}
+                          </td>
+
+                          <td>{att.status}</td>
+
+                          <td className="flex gap-3 justify-center">
+
+                            <button
+                              onClick={() => registrarCheckIn(aluno.id)}
+                              className="text-green-500"
+                            >
+                              <Check />
+                            </button>
+
+                            <button
+                              onClick={() => ausentarCheckIn(aluno.id)}
+                              className="text-red-500"
+                            >
+                              <X />
+                            </button>
+
+                          </td>
+
+                        </tr>
+
+                      )
+
+                    })}
+
+                  </tbody>
+
+                </table>
+
+              </div>
+
+            </div>
+
+          )}
 
         </div>
 
-      )}
+      </div>
 
     </div>
 
