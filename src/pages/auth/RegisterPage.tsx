@@ -8,7 +8,7 @@ export default function RegisterPage() {
 
   const [step, setStep] = useState(1)
 
-  const [name, setName] = useState('')
+  const [nameUser, setNameUser] = useState('')
   const [academy, setAcademy] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -24,17 +24,23 @@ export default function RegisterPage() {
 
     try {
       const response = await apiAuth.post("/auth/register-adm", {
-        name,
+        name: nameUser,
         email,
         password,
         role: "ADMIN",
         nameAcademia: academy,
       });
 
-      const { token } = response.data;
+      const { token, academic, nameAcademic, name } = response.data;
+
 
       if (token) {
         localStorage.setItem("token", token);
+        localStorage.setItem("email", email);
+        localStorage.setItem("academic", academic);
+
+        localStorage.setItem("nameAcademic", nameAcademic);
+        localStorage.setItem("name", name);
         navigate("/", { replace: true });
         return;
       }
@@ -76,8 +82,8 @@ export default function RegisterPage() {
                 <label className="block mb-2 text-sm">Nome</label>
                 <input
                   className="w-full rounded-xl border border-neutral-700 bg-black px-4 py-3 text-white focus:ring-2 focus:ring-red-500"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  value={nameUser}
+                  onChange={(e) => setNameUser(e.target.value)}
                   required
                 />
               </div>
