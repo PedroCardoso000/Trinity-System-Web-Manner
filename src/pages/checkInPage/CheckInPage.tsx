@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   Building2,
   Calendar as CalendarIcon,
@@ -48,6 +48,25 @@ export default function CheckInPage() {
   const academicId = localStorage.getItem('academic')
 
   const branchSelected = selectedBranch !== null
+  const dateInputRef = useRef<HTMLInputElement | null>(null)
+
+  const openDatePicker = () => {
+    const input = dateInputRef.current
+    if (!input) return
+
+    const withPicker = input as HTMLInputElement & {
+      showPicker?: () => void
+    }
+
+    if (typeof withPicker.showPicker === 'function') {
+      withPicker.showPicker()
+      return
+    }
+
+    input.focus()
+    input.click()
+  }
+
 
   /* ================= FILIAIS ================= */
 
@@ -206,14 +225,18 @@ export default function CheckInPage() {
 
           <div className="flex items-center gap-2 bg-neutral-900 border border-neutral-700 rounded-lg px-3 py-2">
 
-            <CalendarIcon className="w-4 h-4 text-neutral-400" />
+            <CalendarIcon
+              onClick={openDatePicker}
+              className="w-4 h-4 text-neutral-400 cursor-pointer"
+            />
 
             <input
+              ref={dateInputRef}
               type="date"
               disabled={!branchSelected}
               value={selectedDate}
               onChange={e => setSelectedDate(e.target.value)}
-              className="bg-transparent outline-none text-sm disabled:opacity-40"
+              className="date-input bg-transparent outline-none text-sm disabled:opacity-40"
             />
 
           </div>
