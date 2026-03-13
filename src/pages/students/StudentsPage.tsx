@@ -31,6 +31,7 @@ export default function StudentsPage() {
     quantidadeGraus: 0,
     ativo: true,
     branchId: 0,
+    dataNascimento: '',
   }
 
   const [form, setForm] = useState<Student>(emptyForm)
@@ -72,6 +73,7 @@ export default function StudentsPage() {
 
     if (!form.nome.trim()) newErrors.nome = 'Nome obrigatório'
     if (!form.email.trim()) newErrors.email = 'Email obrigatório'
+    if (!form.dataNascimento) newErrors.dataNascimento = 'Data de nascimento obrigatória'
     if (!form.branchId) newErrors.branchId = 'Filial obrigatória'
 
     if (form.email && !form.email.includes('@'))
@@ -172,6 +174,7 @@ export default function StudentsPage() {
   const isFormValid =
     form.nome &&
     form.email &&
+    form.dataNascimento &&
     form.branchId !== 0
 
   return (
@@ -304,6 +307,22 @@ export default function StudentsPage() {
                   {errors.email}
                 </span>
               )}
+
+              <div className="space-y-1">
+                <label className="text-xs text-neutral-400 ml-1">Data de Nascimento *</label>
+                <input
+                  type="date"
+                  name="dataNascimento"
+                  value={form.dataNascimento}
+                  onChange={handleChange}
+                  className="w-full rounded-lg bg-neutral-800 p-2 text-white outline-none focus:ring-1 focus:ring-red-600"
+                />
+                {errors.dataNascimento && (
+                  <span className="text-red-500 text-xs">
+                    {errors.dataNascimento}
+                  </span>
+                )}
+              </div>
 
               <input
                 name="telefone"

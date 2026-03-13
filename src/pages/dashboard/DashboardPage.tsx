@@ -1,6 +1,7 @@
 ﻿import { Users, CheckSquare, Calendar, Award } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import apiCore from '../../api/apiCore'
+import Loading from '../../components/Loading'
 
 function StatCard({
   title,
@@ -104,10 +105,19 @@ export default function DashboardPage() {
 
       <main className="space-y-10">
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
-          <StatCard title="Alunos ativos" value={stats.activeStudents} icon={Users} />
-          <StatCard title="Presenças do Mês" value={stats.monthlyPresences} icon={CheckSquare} />
-          <StatCard title="Aulas de hoje" value={stats.lessonsToday} icon={Calendar} />
-          <StatCard title="Aniversariantes do mês" value={stats.monthlyBirthdays} icon={Award} />
+          {loading === true ? (
+            // Put this in center to aling screen 
+            <div className="col-span-full flex justify-center items-center py-20">
+              <Loading />
+            </div>
+          ) : (
+            <>
+              <StatCard title="Alunos ativos" value={stats.activeStudents} icon={Users} />
+              <StatCard title="Presenças do Mês" value={stats.monthlyPresences} icon={CheckSquare} />
+              <StatCard title="Aulas de hoje" value={stats.lessonsToday} icon={Calendar} />
+              <StatCard title="Aniversariantes do mês" value={stats.monthlyBirthdays} icon={Award} />
+            </>
+          )}
         </div>
 
         <div className="rounded-2xl border border-red-800 bg-neutral-900 p-6">

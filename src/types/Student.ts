@@ -11,6 +11,7 @@ type Student = {
     ativo: boolean
     userId?: number
     branchId: number
+    dataNascimento: string
 }
 
 export type { Student }
