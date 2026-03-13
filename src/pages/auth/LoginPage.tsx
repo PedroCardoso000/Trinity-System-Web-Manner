@@ -1,30 +1,69 @@
-import { type FormEvent, useState } from 'react'
+import { type FormEvent, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import apiAuth from '../../api/apiAuth';
 // import { useAuth } from '../../hooks/useAuth'
 
 export default function LoginPage() {
   // const { login } = useAuth()
-  const navigate = useNavigate()
+  const navigate = useNavigate();
 
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(event: FormEvent) {
-    event.preventDefault()
-    setError(null)
-    setSubmitting(true)
+    if (email === '' || password === '') {
+      setError('Preencha todos os campos.')
+      return
+    }
+    event.preventDefault();
+    setError(null);
+    setSubmitting(true);
 
     try {
-      // await login(email, password)
-      navigate('/', { replace: true })
-    } catch {
-      setError('Não foi possível entrar. Verifique suas credenciais.')
+      const response = await apiAuth.post("/auth/login", {
+        email,
+        password,
+      });
+
+      const { role, token, academic, nameAcademic, name } = response.data;
+
+      if (role !== "ADMIN") {
+        setError("Acesso negado.");
+        return
+      }
+
+      if (token) {
+        localStorage.setItem("token", token);
+        localStorage.setItem("email", email);
+        localStorage.setItem("academic", academic);
+        
+        localStorage.setItem("nameAcademic", nameAcademic);
+        localStorage.setItem("name", name);
+      }
+
+      navigate("/", { replace: true });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (err: any) {
+      if (err.response?.status !== 200) {
+        setError("Credenciais inválidas.");
+      } else {
+        setError("Erro ao conectar com o servidor.");
+      }
     } finally {
-      setSubmitting(false)
+      setSubmitting(false);
     }
   }
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+
+    if (token) {
+      navigate("/", { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="min-h-screen bg-black text-white flex items-center justify-center">
@@ -123,6 +162,24 @@ export default function LoginPage() {
           >
             {submitting ? 'Entrando...' : 'Entrar'}
           </button>
+          {/* Links adicionais */}
+          <div className="flex justify-between items-center pt-4 text-sm">
+            <button
+              type="button"
+              onClick={() => navigate('/forgot-password')}
+              className="text-neutral-400 hover:text-white transition-colors"
+            >
+              Esqueci minha senha
+            </button>
+
+            <button
+              type="button"
+              onClick={() => navigate('/register')}
+              className="text-red-500 hover:text-red-400 font-medium transition-colors"
+            >
+              Cadastrar
+            </button>
+          </div>
         </form>
       </div>
     </div>

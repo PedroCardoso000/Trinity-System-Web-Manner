@@ -1,47 +1,28 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Users, Plus, Edit, Trash2, X } from 'lucide-react'
+import apiCore from '../../api/apiCore'
+import Loading from '../../components/Loading'
+import ConfirmModal from '../../components/ConfirmModal'
+import type { Student } from '../../types/Student'
+import type { Branch } from '../../types/Branch'
 
-type Faixa =
-  | 'BRANCA'
-  | 'AZUL'
-  | 'ROXA'
-  | 'MARROM'
-  | 'PRETA'
 
-type Student = {
-  id: string
-  nome: string
-  email: string
-  telefone?: string
-  anoInicioNaTrinity?: number
-  faixa: Faixa
-  quantidadeGraus?: number
-  ativo: boolean
-  userId?: number
-  branchId: number
-}
 
-const MOCK_STUDENTS: Student[] = [
-  {
-    id: '1',
-    nome: 'João Silva',
-    email: 'joao@email.com',
-    telefone: '11999999999',
-    anoInicioNaTrinity: 2020,
-    faixa: 'AZUL',
-    quantidadeGraus: 2,
-    ativo: true,
-    branchId: 1,
-  },
-]
+
 
 export default function StudentsPage() {
-  const [students, setStudents] = useState<Student[]>(MOCK_STUDENTS)
+  const [students, setStudents] = useState<Student[]>([])
+  const [branches, setBranches] = useState<Branch[]>([])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<Student | null>(null)
+  const [deletingId, setDeletingId] = useState<number | null>(null)
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [toast, setToast] = useState<string | null>(null)
 
-  const [form, setForm] = useState<Student>({
-    id: '',
+  const emptyForm: Student = {
+    id: 0,
     nome: '',
     email: '',
     telefone: '',
@@ -49,81 +30,188 @@ export default function StudentsPage() {
     faixa: 'BRANCA',
     quantidadeGraus: 0,
     ativo: true,
-    branchId: 1,
-  })
+    branchId: 0,
+  }
 
-  function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
+  const [form, setForm] = useState<Student>(emptyForm)
+
+  const showToast = (message: string) => {
+    setToast(message)
+    setTimeout(() => setToast(null), 3000)
+  }
+
+  const closeModal = () => {
+    setOpen(false)
+    setEditing(null)
+    setForm(emptyForm)
+    setErrors({})
+  }
+
+  function handleChange(
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) {
     const { name, value } = e.target
+
     setForm(prev => ({
       ...prev,
       [name]:
         name === 'ativo'
           ? value === 'true'
-          : name === 'anoInicioNaTrinity' || name === 'quantidadeGraus' || name === 'branchId'
-          ? Number(value)
-          : value,
+          : name === 'anoInicioNaTrinity' ||
+            name === 'quantidadeGraus' ||
+            name === 'branchId'
+            ? Number(value)
+            : value,
     }))
+
+    setErrors(prev => ({ ...prev, [name]: '' }))
   }
 
-  function handleSubmit() {
-    if (editing) {
-      setStudents(prev =>
-        prev.map(s => (s.id === editing.id ? { ...form, id: editing.id } : s))
-      )
-    } else {
-      setStudents(prev => [...prev, { ...form, id: crypto.randomUUID() }])
+  const validate = () => {
+    const newErrors: Record<string, string> = {}
+
+    if (!form.nome.trim()) newErrors.nome = 'Nome obrigatório'
+    if (!form.email.trim()) newErrors.email = 'Email obrigatório'
+    if (!form.branchId) newErrors.branchId = 'Filial obrigatória'
+
+    if (form.email && !form.email.includes('@'))
+      newErrors.email = 'Email inválido'
+
+    if (
+      form.telefone &&
+      form.telefone.replace(/\D/g, '').length < 10
+    )
+      newErrors.telefone = 'Telefone inválido'
+
+    if (
+      form.anoInicioNaTrinity &&
+      form.anoInicioNaTrinity < 1900
+    )
+      newErrors.anoInicioNaTrinity = 'Ano inválido'
+
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
+  const fetchData = async () => {
+    try {
+      const academicId = localStorage.getItem('academic')
+      if (!academicId) return
+
+      const [studentsRes, branchesRes] = await Promise.all([
+        apiCore.get(`/alunos/academia/${academicId}`),
+        apiCore.get(`/branches/academic/${academicId}`),
+      ])
+
+      setStudents(studentsRes.data)
+      setBranches(branchesRes.data)
+    } catch (error) {
+      console.error(error)
+      showToast('Erro ao carregar dados.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchData()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const handleSubmit = async () => {
+    if (!validate()) return
+
+    const academicId = localStorage.getItem('academic')
+    if (!academicId) {
+      showToast('Academia não identificada.')
+      return
     }
 
-    setOpen(false)
-    setEditing(null)
+    setSaving(true)
+
+    try {
+      if (editing) {
+        await apiCore.put(`/alunos/${editing.id}`, {
+          ...form,
+          academicId: Number(academicId),
+        })
+        showToast('Aluno atualizado com sucesso!')
+      } else {
+        await apiCore.post(`/alunos`, {
+          ...form,
+          academicId: Number(academicId),
+        })
+        showToast('Aluno criado com sucesso!')
+      }
+
+      await fetchData()
+      closeModal()
+    } catch (error) {
+      console.error(error)
+      showToast('Erro ao salvar aluno.')
+    } finally {
+      setSaving(false)
+    }
   }
 
-  function handleEdit(student: Student) {
-    setEditing(student)
-    setForm(student)
-    setOpen(true)
+  const handleDelete = async () => {
+    if (!deletingId) return
+
+    try {
+      await apiCore.delete(`/alunos/${deletingId}`)
+      setStudents(prev => prev.filter(s => s.id !== deletingId))
+      showToast('Aluno removido com sucesso!')
+    } catch (error) {
+      console.error(error)
+      showToast('Erro ao deletar aluno.')
+    } finally {
+      setDeletingId(null)
+    }
   }
 
-  function handleDelete(id: string) {
-    setStudents(prev => prev.filter(s => s.id !== id))
-  }
+  const isFormValid =
+    form.nome &&
+    form.email &&
+    form.branchId !== 0
 
   return (
-    <div className="space-y-8 text-white">
+    <div className="min-h-screen bg-black text-white px-10 py-8 space-y-8">
+
+      {toast && (
+        <div className="fixed top-5 right-5 bg-red-700 px-4 py-2 rounded-lg shadow-lg z-50">
+          {toast}
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold">Alunos</h1>
           <p className="text-sm text-neutral-400">
-            Gerencie os alunos da Trinity
+            Gerencie os alunos da academia
           </p>
         </div>
 
         <button
           onClick={() => {
             setEditing(null)
-            setForm({
-              id: '',
-              nome: '',
-              email: '',
-              telefone: '',
-              anoInicioNaTrinity: undefined,
-              faixa: 'BRANCA',
-              quantidadeGraus: 0,
-              ativo: true,
-              branchId: 1,
-            })
+            setForm(emptyForm)
             setOpen(true)
           }}
-          className="flex items-center gap-2 rounded-lg bg-red-700 px-4 py-2 text-sm font-medium hover:bg-red-600 transition"
+          className="flex items-center gap-2 rounded-lg bg-red-700 px-4 py-2 text-sm hover:bg-red-600"
         >
           <Plus className="h-4 w-4" />
           Novo aluno
         </button>
       </div>
 
-      {/* LISTA */}
-      <div className="space-y-4">
-        {students.map(student => (
+      {loading ? (
+        <Loading text="Carregando alunos..." />
+      ) : students.length === 0 ? (
+        <p className="text-neutral-500 italic">
+          Nenhum aluno cadastrado.
+        </p>
+      ) : (
+        students.map(student => (
           <div
             key={student.id}
             className="flex items-center justify-between rounded-2xl border border-red-800 bg-neutral-900 p-5"
@@ -135,7 +223,9 @@ export default function StudentsPage() {
 
               <div>
                 <p className="font-medium">{student.nome}</p>
-                <p className="text-sm text-neutral-400">{student.email}</p>
+                <p className="text-sm text-neutral-400">
+                  {student.email}
+                </p>
                 <p className="text-xs text-neutral-500">
                   Faixa: {student.faixa} • Graus: {student.quantidadeGraus}
                 </p>
@@ -144,62 +234,76 @@ export default function StudentsPage() {
 
             <div className="flex items-center gap-3">
               <span
-                className={`rounded-full px-3 py-1 text-xs font-medium border ${
-                  student.ativo
+                className={`rounded-full px-3 py-1 text-xs border ${student.ativo
                     ? 'border-red-600 text-red-400'
                     : 'border-neutral-600 text-neutral-400'
-                }`}
+                  }`}
               >
                 {student.ativo ? 'Ativo' : 'Inativo'}
               </span>
 
               <button
-                onClick={() => handleEdit(student)}
+                onClick={() => {
+                  setEditing(student)
+                  setForm(student)
+                  setOpen(true)
+                }}
                 className="rounded-lg border border-neutral-700 p-2 hover:bg-neutral-800"
               >
                 <Edit className="h-4 w-4" />
               </button>
 
               <button
-                onClick={() => handleDelete(student.id)}
+                onClick={() => setDeletingId(student.id)}
                 className="rounded-lg border border-red-700 p-2 hover:bg-red-700"
               >
                 <Trash2 className="h-4 w-4" />
               </button>
             </div>
           </div>
-        ))}
-      </div>
+        ))
+      )}
 
-      {/* MODAL */}
       {open && (
         <div className="fixed inset-0 flex items-center justify-center bg-black/70">
           <div className="w-full max-w-lg rounded-2xl bg-neutral-900 p-6 space-y-4">
+
             <div className="flex justify-between items-center">
               <h2 className="text-lg font-semibold">
                 {editing ? 'Editar aluno' : 'Novo aluno'}
               </h2>
-              <button onClick={() => setOpen(false)}>
+              <button onClick={closeModal}>
                 <X />
               </button>
             </div>
 
             <div className="space-y-3">
+
               <input
                 name="nome"
                 value={form.nome}
                 onChange={handleChange}
-                placeholder="Nome"
+                placeholder="Nome *"
                 className="w-full rounded-lg bg-neutral-800 p-2"
               />
+              {errors.nome && (
+                <span className="text-red-500 text-xs">
+                  {errors.nome}
+                </span>
+              )}
 
               <input
                 name="email"
                 value={form.email}
                 onChange={handleChange}
-                placeholder="Email"
+                placeholder="Email *"
                 className="w-full rounded-lg bg-neutral-800 p-2"
               />
+              {errors.email && (
+                <span className="text-red-500 text-xs">
+                  {errors.email}
+                </span>
+              )}
 
               <input
                 name="telefone"
@@ -241,6 +345,25 @@ export default function StudentsPage() {
               />
 
               <select
+                name="branchId"
+                value={form.branchId}
+                onChange={handleChange}
+                className="w-full rounded-lg bg-neutral-800 p-2"
+              >
+                <option value={0}>Selecione a filial *</option>
+                {branches.map(branch => (
+                  <option key={branch.id} value={branch.id}>
+                    {branch.name}
+                  </option>
+                ))}
+              </select>
+              {errors.branchId && (
+                <span className="text-red-500 text-xs">
+                  {errors.branchId}
+                </span>
+              )}
+
+              <select
                 name="ativo"
                 value={String(form.ativo)}
                 onChange={handleChange}
@@ -253,13 +376,24 @@ export default function StudentsPage() {
 
             <button
               onClick={handleSubmit}
-              className="w-full rounded-lg bg-red-700 py-2 font-medium hover:bg-red-600"
+              disabled={!isFormValid || saving}
+              className="w-full rounded-lg bg-red-700 py-2 font-medium hover:bg-red-600 disabled:opacity-50"
             >
-              Salvar
+              {saving ? 'Salvando...' : 'Salvar'}
             </button>
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={deletingId !== null}
+        onClose={() => setDeletingId(null)}
+        onConfirm={handleDelete}
+        title="Excluir Aluno"
+        message="Tem certeza que deseja excluir este aluno? Esta ação não pode ser desfeita."
+        confirmText="Sim, excluir"
+        cancelText="Não, cancelar"
+      />
     </div>
   )
 }
