@@ -1,4 +1,6 @@
-import { Users, CheckSquare, Calendar, Award } from 'lucide-react'
+﻿import { Users, CheckSquare, Calendar, Award } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import apiCore from '../../api/apiCore'
 
 function StatCard({
   title,
@@ -28,6 +30,67 @@ function StatCard({
 }
 
 export default function DashboardPage() {
+  const [stats, setStats] = useState({
+    activeStudents: 0,
+    monthlyPresences: 0,
+    lessonsToday: 0,
+    monthlyBirthdays: 0,
+  })
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    async function loadDashboard() {
+      const academicId = localStorage.getItem('academic')
+
+      if (!academicId) {
+        setError('Academia não identificada.')
+        setLoading(false)
+        return
+      }
+
+      try {
+        setLoading(true)
+        setError(null)
+
+        const [activeRes, presencesRes, lessonsRes, birthdaysRes] =
+          await Promise.all([
+            apiCore.get(`/dashboard/${academicId}/active-alunos`),
+            apiCore.get(`/dashboard/${academicId}/monthly-attendances`),
+            apiCore.get(`/dashboard/${academicId}/classes-today`),
+            apiCore.get(`/dashboard/${academicId}/monthly-birthdays`),
+          ])
+
+        const normalizeMetric = (data: unknown) => {
+          if (typeof data === 'number') return data
+          if (data && typeof data === 'object' && 'value' in data) {
+            const value = (data as { value?: unknown }).value
+            if (typeof value === 'number') return value
+            if (typeof value === 'string') {
+              const parsed = Number(value)
+              if (!Number.isNaN(parsed)) return parsed
+            }
+          }
+          return 0
+        }
+
+        setStats({
+          activeStudents: normalizeMetric(activeRes.data),
+          monthlyPresences: normalizeMetric(presencesRes.data),
+          lessonsToday: normalizeMetric(lessonsRes.data),
+          monthlyBirthdays: normalizeMetric(birthdaysRes.data),
+        })
+      } catch (err) {
+        console.error('Erro ao carregar dashboard:', err)
+        setError('Erro ao conectar com o servidor.')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadDashboard()
+  }, [])
+
   return (
     <div className="space-y-10">
       <header className="flex items-center justify-between">
@@ -41,10 +104,10 @@ export default function DashboardPage() {
 
       <main className="space-y-10">
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
-          <StatCard title="Alunos ativos" value={0} icon={Users} />
-          <StatCard title="Presenças do Mês" value={0} icon={CheckSquare} />
-          <StatCard title="Aulas de hoje" value={0} icon={Calendar} />
-          <StatCard title="Aniversariantes do mês" value={0} icon={Award} />
+          <StatCard title="Alunos ativos" value={stats.activeStudents} icon={Users} />
+          <StatCard title="Presenças do Mês" value={stats.monthlyPresences} icon={CheckSquare} />
+          <StatCard title="Aulas de hoje" value={stats.lessonsToday} icon={Calendar} />
+          <StatCard title="Aniversariantes do mês" value={stats.monthlyBirthdays} icon={Award} />
         </div>
 
         <div className="rounded-2xl border border-red-800 bg-neutral-900 p-6">
@@ -53,6 +116,12 @@ export default function DashboardPage() {
             Aqui futuramente entram check-ins recentes, aniversariantes,
             graduações ou relatórios.
           </p>
+          {loading && (
+            <p className="mt-3 text-sm text-neutral-400">Carregando...</p>
+          )}
+          {error && (
+            <p className="mt-3 text-sm text-red-400">{error}</p>
+          )}
         </div>
       </main>
     </div>
