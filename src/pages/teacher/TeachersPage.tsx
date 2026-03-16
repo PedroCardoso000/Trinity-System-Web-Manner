@@ -5,6 +5,7 @@ import Loading from '../../components/Loading'
 import ConfirmModal from '../../components/ConfirmModal'
 import type { Branch } from '../../types/Branch'
 import type { Teacher } from '../../types/Teacher'
+import { formatPhone, onlyLetters } from '../../hooks/validation/Fields' // ou o caminho correto do seu arquivo
 
 
 export default function TeachersPage() {
@@ -47,15 +48,26 @@ export default function TeachersPage() {
         e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
     ) {
         const { name, value } = e.target
+        let newValue = value
 
+        // Aplica máscara/validação baseada no nome do campo
+        if (name === 'nome') {
+            newValue = onlyLetters(value)
+        }
+
+        if (name === 'telefone') {
+            newValue = formatPhone(value)
+        }
+
+        // Mantém as lógicas de conversão de tipo originais
         setForm(prev => ({
             ...prev,
             [name]:
                 name === 'ativo'
                     ? value === 'true'
                     : name === 'quantidadeGraus' || name === 'branchId'
-                        ? Number(value)
-                        : value,
+                        ? Number(newValue) // Usa o valor tratado
+                        : newValue,
         }))
 
         setErrors(prev => ({ ...prev, [name]: '' }))
@@ -135,7 +147,7 @@ export default function TeachersPage() {
             phone: form.telefone,
             belt: form.faixa,
             quantityDegree: form.quantidadeGraus,
-            branchId: [form.branchId], 
+            branchId: [form.branchId],
             academicId: Number(academicId),
             active: form.ativo,
         }

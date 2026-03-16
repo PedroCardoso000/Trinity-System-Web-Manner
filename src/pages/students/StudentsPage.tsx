@@ -5,6 +5,8 @@ import Loading from '../../components/Loading'
 import ConfirmModal from '../../components/ConfirmModal'
 import type { Student } from '../../types/Student'
 import type { Branch } from '../../types/Branch'
+import { formatPhone, onlyLetters } from '../../hooks/validation/Fields' // ou o caminho correto do seu arquivo
+
 
 
 
@@ -52,7 +54,18 @@ export default function StudentsPage() {
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) {
     const { name, value } = e.target
+    let newValue = value
 
+    // 1. Aplica Máscaras e Filtros
+    if (name === 'nome') {
+      newValue = onlyLetters(value)
+    }
+
+    if (name === 'telefone') {
+      newValue = formatPhone(value)
+    }
+
+    // 2. Atualiza o Estado com conversões de tipo
     setForm(prev => ({
       ...prev,
       [name]:
@@ -61,8 +74,8 @@ export default function StudentsPage() {
           : name === 'anoInicioNaTrinity' ||
             name === 'quantidadeGraus' ||
             name === 'branchId'
-            ? Number(value)
-            : value,
+            ? Number(value.replace(/\D/g, '')) // Garante que apenas números entrem no cast
+            : newValue,
     }))
 
     setErrors(prev => ({ ...prev, [name]: '' }))
@@ -238,8 +251,8 @@ export default function StudentsPage() {
             <div className="flex items-center gap-3">
               <span
                 className={`rounded-full px-3 py-1 text-xs border ${student.ativo
-                    ? 'border-red-600 text-red-400'
-                    : 'border-neutral-600 text-neutral-400'
+                  ? 'border-red-600 text-red-400'
+                  : 'border-neutral-600 text-neutral-400'
                   }`}
               >
                 {student.ativo ? 'Ativo' : 'Inativo'}
