@@ -8,10 +8,11 @@ const belts = ["BRANCA", "AZUL", "ROXA", "MARROM", "PRETA"]
 type Aluno = {
   id: number
   nome: string
-  faixa: string
-  quantidadeGraus: number
+  belt: string
+  quantityDegree: number
   branchId: number
   academicId: number
+  branchName: string
   ativo: boolean
 }
 
@@ -43,10 +44,12 @@ export default function GraduationsPage() {
 
         const [studentsResponse, historyResponse] = await Promise.all([
           apiCore.get(`/alunos/academia/${Number(academicId)}`),
-          apiCore.get("/alunos/graduation-history/all"),
+          apiCore.get(`/alunos/graduation-history/all/${Number(academicId)}`),
         ])
 
         setStudents(studentsResponse.data)
+        console.log(studentsResponse.data);
+        
         setHistory(historyResponse.data)
       } catch (error) {
         console.error("Erro ao buscar dados:", error)
@@ -60,8 +63,8 @@ export default function GraduationsPage() {
 
   function openEdit(student: Aluno) {
     setEditingStudent(student)
-    setEditBelt(student.faixa)
-    setEditDegree(student.quantidadeGraus)
+    setEditBelt(student.belt)
+    setEditDegree(student.quantityDegree)
   }
 
   async function saveEdit() {
@@ -99,7 +102,7 @@ export default function GraduationsPage() {
   }
 
   async function graduate(student: Aluno) {
-    const currentIndex = belts.indexOf(student.faixa)
+    const currentIndex = belts.indexOf(student.belt)
     if (currentIndex === belts.length - 1) return
 
     const newBelt = belts[currentIndex + 1]
@@ -114,7 +117,7 @@ export default function GraduationsPage() {
       setStudents(prev =>
         prev.map(s =>
           s.id === student.id
-            ? { ...s, faixa: newBelt, quantidadeGraus: 0 }
+            ? { ...s, belt: newBelt, quantidadeGraus: 0 }
             : s
         )
       )
@@ -160,21 +163,21 @@ export default function GraduationsPage() {
 
                 <div className="mt-4 flex items-center gap-3 flex-wrap">
                   <span className="inline-flex items-center rounded-full border border-red-700 px-3 py-1 text-xs font-medium text-red-300">
-                    {student.faixa}
+                    {student.belt}
                   </span>
                   <span className="inline-flex items-center rounded-full border border-neutral-700 px-3 py-1 text-xs font-medium text-neutral-300">
-                    Grau {student.quantidadeGraus}
+                    Grau - {student.quantityDegree}
                   </span>
                 </div>
 
                 <div className="mt-4 flex items-center gap-2 text-sm text-neutral-400">
                   <Building2 className="h-4 w-4" />
-                  Branch {student.branchId}
+                  {student.branchName}
                 </div>
               </div>
 
               <div className="flex items-center justify-between text-sm text-neutral-400">
-                {student.faixa !== "PRETA" && (
+                {student.belt !== "PRETA" && (
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => openEdit(student)}
