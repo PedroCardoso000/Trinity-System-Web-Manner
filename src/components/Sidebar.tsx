@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, Users, Building2, CheckSquare, Award, LogOut, UsersRound } from 'lucide-react'
+import { LayoutDashboard, Users, Building2, CheckSquare, ListChecks, Award, LogOut, UsersRound } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 
 export default function Sidebar() {
@@ -31,6 +31,7 @@ export default function Sidebar() {
         <Item to="/branches" icon={Building2} label="Filiais" />
         <Item to="/teachers" icon={Users} label="Professores" />
         <Item to="/students" icon={UsersRound} label="Alunos" />
+        <Item to="/classes" icon={ListChecks} label="Turmas" />
         <Item to="/checkin" icon={CheckSquare} label="Check-in" />
         <Item to="/graduations" icon={Award} label="Graduações" />
       </nav>
